@@ -102,6 +102,7 @@ async function saveBookToLibrary(bookData) {
         pdfBlob: bookData.pdfBlob || existing.pdfBlob || null,
         audioName: bookData.audioName || existing.audioName || '',
         audioBlob: bookData.audioBlob || existing.audioBlob || null,
+        audios: (bookData.audios !== undefined) ? bookData.audios : (existing.audios || []),
         timestamps: (bookData.timestamps !== undefined) ? bookData.timestamps : (existing.timestamps || {}),
         updatedAt: Date.now()
       };
@@ -846,9 +847,20 @@ async function handlePdfFileSelect(e) {
 
   // 2. Tự động kiểm tra trong thư viện IndexedDB xem có file MP3 đã ghép đôi trước đó không
   const saved = await getBookFromLibrary(key);
-  if (saved && saved.audioBlob) {
-    loadAudioFromBlob(saved.audioBlob);
-    showToast(`⚡ Đã tự động nạp MP3: ${saved.audioName}`);
+  if (saved) {
+    if (saved.audios && saved.audios.length > 0) {
+      state.currentStoryAudios = saved.audios;
+      state.currentAudioIndex = 0;
+      loadAudioPart(0);
+      updateAudioPartUI();
+      showToast(`⚡ Đã tự động nạp ${saved.audios.length} part MP3!`);
+    } else if (saved.audioBlob) {
+      state.currentStoryAudios = [{ name: saved.audioName || file.name, blob: saved.audioBlob }];
+      state.currentAudioIndex = 0;
+      loadAudioFromBlob(saved.audioBlob);
+      updateAudioPartUI();
+      showToast(`⚡ Đã tự động nạp MP3: ${saved.audioName}`);
+    }
   }
 
   saveBookToLibrary({
@@ -859,12 +871,47 @@ async function handlePdfFileSelect(e) {
 }
 
 async function handleAudioFileSelect(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
 
-  const key = getBookUniqueKey(file.name);
-  loadAudioFromBlob(file);
+  // Reset input để người dùng có thể chọn lại cùng file nếu muốn
+  e.target.value = '';
 
+  // Chuyển danh sách file thành audio items có partLabel và sắp xếp
+  const audioItems = files.map(f => {
+    const partMatch = f.name.match(/part[_\s-]*(\d+)|side[_\s-]*([ab])|disc[_\s-]*(\d+)|\b(\d+)\s*of\s*\d+/i);
+    const partLabel = partMatch
+      ? (partMatch[1] ? ('Part ' + partMatch[1]) : partMatch[2] ? ('Side ' + partMatch[2].toUpperCase()) : partMatch[3] ? ('Disc ' + partMatch[3]) : ('Part ' + partMatch[4]))
+      : null;
+    return {
+      name: f.name,
+      blob: f,
+      type: 'audio',
+      partLabel: partLabel
+    };
+  });
+
+  audioItems.sort((a, b) => a.name.localeCompare(b.name, 'vi', { numeric: true }));
+  if (audioItems.length > 1) {
+    audioItems.forEach((aud, i) => {
+      if (!aud.partLabel) aud.partLabel = 'Part ' + (i + 1);
+    });
+  }
+
+  // Cập nhật danh sách audio đang mở vào state
+  state.currentStoryAudios = audioItems;
+  state.currentAudioIndex = 0;
+
+  // Nạp part đầu tiên và hiển thị thanh chọn part
+  loadAudioPart(0);
+  updateAudioPartUI();
+
+  if (audioItems.length > 1) {
+    showToast(`🎵 Đã nạp ${audioItems.length} part audio!`);
+  }
+
+  // Tìm kiếm PDF tương ứng nếu chưa mở PDF
+  const key = getBookUniqueKey(files[0].name);
   if (!state.pdfDoc) {
     const saved = await getBookFromLibrary(key);
     if (saved && saved.pdfBlob) {
@@ -877,8 +924,9 @@ async function handleAudioFileSelect(e) {
   const currentKey = state.currentBookKey || key;
   saveBookToLibrary({
     id: currentKey,
-    audioName: file.name,
-    audioBlob: file
+    audioName: audioItems[0].name,
+    audioBlob: audioItems[0].blob,
+    audios: audioItems
   });
 }
 
@@ -1217,9 +1265,18 @@ async function renderCurrentSpread() {
   }
 
   if (state.autoSeekAudio && !state.isAudioDrivenChange) {
-    const targetTimestamp = state.pageTimestamps[leftPageNum];
-    if (typeof targetTimestamp === 'number') {
-      dom.audioElement.currentTime = targetTimestamp;
+    const rawTarget = state.pageTimestamps[leftPageNum];
+    if (typeof rawTarget === 'number') {
+      dom.audioElement.currentTime = rawTarget;
+    } else if (rawTarget && typeof rawTarget === 'object' && typeof rawTarget.time === 'number') {
+      if (rawTarget.part !== undefined && rawTarget.part !== state.currentAudioIndex && state.currentStoryAudios && state.currentStoryAudios[rawTarget.part]) {
+        loadAudioPart(rawTarget.part);
+        setTimeout(() => {
+          dom.audioElement.currentTime = rawTarget.time;
+        }, 300);
+      } else {
+        dom.audioElement.currentTime = rawTarget.time;
+      }
     }
   }
 }
@@ -1519,8 +1576,9 @@ window.deleteSync = function(page) {
 };
 
 window.setManualSync = function(page) {
-  const currentVal = state.pageTimestamps[page] || Math.floor(dom.audioElement.currentTime || 0);
-  const input = prompt(`Nhập số giây bắt đầu cho Trang ${page} (hoặc dạng MM:SS):`, formatTime(currentVal));
+  const rawVal = state.pageTimestamps[page];
+  const currentValSec = (typeof rawVal === 'number') ? rawVal : (rawVal && typeof rawVal === 'object' && typeof rawVal.time === 'number') ? rawVal.time : Math.floor(dom.audioElement.currentTime || 0);
+  const input = prompt(`Nhập số giây bắt đầu cho Trang ${page} (hoặc dạng MM:SS):`, formatTime(currentValSec));
   if (!input) return;
 
   let seconds = 0;
@@ -1533,7 +1591,25 @@ window.setManualSync = function(page) {
   }
 
   if (!isNaN(seconds) && seconds >= 0) {
-    state.pageTimestamps[page] = seconds;
+    if (state.currentStoryAudios && state.currentStoryAudios.length > 1) {
+      let partIdx = state.currentAudioIndex;
+      if (rawVal && typeof rawVal === 'object' && typeof rawVal.part === 'number') {
+        partIdx = rawVal.part;
+      }
+      const partInput = prompt(`Trang ${page} thuộc phần audio nào? (1 đến ${state.currentStoryAudios.length}):`, (partIdx + 1));
+      if (partInput) {
+        const parsedPart = parseInt(partInput, 10);
+        if (!isNaN(parsedPart) && parsedPart >= 1 && parsedPart <= state.currentStoryAudios.length) {
+          partIdx = parsedPart - 1;
+        }
+      }
+      state.pageTimestamps[page] = {
+        time: seconds,
+        part: partIdx
+      };
+    } else {
+      state.pageTimestamps[page] = seconds;
+    }
     saveSyncToStorage();
     autoSaveSyncToLocalDirectory();
     updatePageTimestampBadge();
