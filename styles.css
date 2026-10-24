@@ -149,16 +149,6 @@ body {
   background: #475569;
 }
 
-.online-btn {
-  background: linear-gradient(135deg, #0284c7, #0369a1);
-  border-color: #38bdf8;
-  color: #fff;
-}
-
-.online-btn:hover {
-  background: linear-gradient(135deg, #0369a1, #075985);
-}
-
 /* FILE PICKER DRAWER / BANNER */
 .file-picker-section {
   background-color: var(--bg-panel);
@@ -180,70 +170,48 @@ body {
   justify-content: flex-start;
 }
 
-.file-input-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 100%;
-}
-
-.btn-combined {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
+/* 3 NÚT CHÍNH RÕ RÀNG */
+.action-btn {
+  padding: 8px 14px;
   border-radius: var(--radius-md);
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
+  border: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
-  transition: transform 0.1s, box-shadow 0.2s;
+  gap: 6px;
+  transition: transform 0.1s, box-shadow 0.2s, filter 0.15s;
+  user-select: none;
 }
 
-.btn-combined:hover {
+.action-btn:hover {
   filter: brightness(1.1);
 }
 
-.btn-combined:active {
+.action-btn:active {
   transform: scale(0.97);
 }
 
-.folder-group {
-  margin-left: 2px;
+/* NÚT 1: THƯ MỤC & DRIVE */
+.btn-node-1 {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(139, 92, 246, 0.35);
 }
 
-.btn-highlight {
-  background: #334155;
-  color: #e2e8f0;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 8px 14px;
-  border-radius: var(--radius-md);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
+/* NÚT 2: CHỌN PDF */
+.btn-node-2 {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.35);
 }
 
-.btn-highlight:hover {
-  background: #475569;
-}
-
-.btn-banner-link {
-  background: rgba(2, 132, 199, 0.15);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  color: #38bdf8;
-  padding: 7px 12px;
-  border-radius: var(--radius-md);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-banner-link:hover {
-  background: rgba(2, 132, 199, 0.3);
+/* NÚT 3: CHỌN MP3 */
+.btn-node-3 {
+  background: linear-gradient(135deg, #059669, #047857);
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.35);
 }
 
 /* ACTIVE FILES PILLS */
@@ -266,6 +234,12 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 500;
+}
+
+.file-status-pill.sync-pill {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
 }
 
 .file-status-pill.empty {
@@ -378,65 +352,70 @@ body {
   box-shadow: 6px 8px 25px rgba(0, 0, 0, 0.4), inset 6px 0 8px rgba(0, 0, 0, 0.08);
 }
 
+/* EMPTY STATE VỚI HƯỚNG DẪN 3 NÚT */
 .empty-state {
   text-align: center;
   margin: auto;
-  padding: 30px 20px;
-  max-width: 520px;
+  padding: 24px 16px;
+  max-width: 540px;
 }
 
 .empty-icon {
-  font-size: 3.5rem;
-  margin-bottom: 12px;
-}
-
-.empty-state h2 {
-  font-size: 1.3rem;
+  font-size: 3.2rem;
   margin-bottom: 8px;
 }
 
+.empty-state h2 {
+  font-size: 1.25rem;
+  margin-bottom: 6px;
+}
+
 .empty-state p {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
   line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.empty-guide-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
   margin-bottom: 20px;
 }
 
-.empty-actions {
+.guide-item {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
   display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 24px;
-}
-
-.btn-combined-large {
-  background: linear-gradient(135deg, #0284c7, #0369a1);
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: var(--radius-md);
-  font-size: 0.92rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
-  transition: transform 0.1s;
-}
-
-.btn-combined-large:active {
-  transform: scale(0.97);
-}
-
-.btn-secondary-large {
-  background: #334155;
-  color: #f8fafc;
-  padding: 10px 18px;
-  border-radius: var(--radius-md);
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
   align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.guide-item:hover {
+  background: #3e4f66;
+  transform: translateY(-2px);
+}
+
+.item-icon {
+  font-size: 1.8rem;
+}
+
+.item-text b {
+  display: block;
+  font-size: 0.9rem;
+  color: #60a5fa;
+  margin-bottom: 2px;
+}
+
+.item-text span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .feature-tags {
@@ -450,7 +429,7 @@ body {
   background: var(--bg-card);
   padding: 5px 12px;
   border-radius: 20px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: #cbd5e1;
 }
 
@@ -693,45 +672,67 @@ body {
   overflow-y: auto;
 }
 
-/* FORM ONLINE LINK */
+/* MODAL NÚT 1: THƯ MỤC VÀ GOOGLE DRIVE */
+.option-block {
+  background: var(--bg-dark);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 14px;
+  border-radius: var(--radius-md);
+}
+
+.option-block h4 {
+  font-size: 0.95rem;
+  color: #38bdf8;
+  margin-bottom: 6px;
+}
+
+.option-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.divider-text {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  margin: 14px 0;
+  position: relative;
+}
+
 .guide-box {
   background: rgba(2, 132, 199, 0.1);
   border: 1px solid rgba(56, 189, 248, 0.3);
-  padding: 12px;
-  border-radius: var(--radius-md);
-  margin-bottom: 16px;
-  font-size: 0.82rem;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  font-size: 0.8rem;
   color: #cbd5e1;
-  line-height: 1.5;
-}
-
-.guide-box ol {
-  padding-left: 18px;
-  margin-top: 6px;
+  line-height: 1.4;
 }
 
 .form-group {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .form-group label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   color: #e2e8f0;
 }
 
 .text-input {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  background: var(--bg-dark);
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: #0b1120;
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #fff;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   outline: none;
-  transition: border-color 0.2s;
 }
 
 .text-input:focus {
@@ -741,35 +742,42 @@ body {
 .modal-actions-right {
   display: flex;
   justify-content: flex-end;
-  margin-top: 18px;
+  margin-top: 14px;
+}
+
+.btn-primary-large, .btn-success-large {
+  padding: 9px 18px;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  color: #fff;
 }
 
 .btn-primary-large {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: var(--radius-md);
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
+}
+
+.btn-success-large {
+  background: linear-gradient(135deg, #059669, #047857);
 }
 
 /* LỊCH SỬ LINK GẦN ĐÂY */
 .history-section {
-  margin-top: 20px;
+  margin-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 14px;
+  padding-top: 12px;
 }
 
 .history-section h4 {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: #94a3b8;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .history-item {
-  background: var(--bg-dark);
+  background: #0b1120;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
@@ -778,7 +786,6 @@ body {
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  transition: background 0.15s;
 }
 
 .history-item:hover {
@@ -896,7 +903,7 @@ body {
     flex-direction: column;
     align-items: stretch;
   }
-  .btn-combined {
+  .action-btn {
     justify-content: center;
   }
   .quick-options {

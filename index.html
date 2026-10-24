@@ -22,7 +22,7 @@
       <h1 class="app-title">📖 PDF Audio Sync</h1>
     </div>
 
-    <!-- VIEW MODE CONTROLS -->
+    <!-- VIEW MODE CONTROLS (Vừa ngang, Vừa dọc, 2 Trang, Zoom) -->
     <div class="view-controls-bar">
       <button id="btnFitWidth" class="view-btn active" title="Vừa chiều ngang màn hình (cuộn dọc)">
         ↔ <span class="hide-mobile">Vừa ngang</span>
@@ -42,46 +42,45 @@
     </div>
 
     <div class="header-right">
-      <!-- NÚT MỞ TỪ LINK ONLINE / GOOGLE DRIVE -->
-      <button id="btnOpenOnlineModal" class="icon-btn online-btn" title="Mở trực tiếp từ link Google Drive / Online">
-        🔗 <span class="hide-mobile">Link Google Drive</span>
-      </button>
       <button id="btnOpenSyncModal" class="icon-btn" title="Quản lý mốc đồng bộ thời gian">
         ⚙️ <span class="hide-mobile">Mốc khớp</span>
       </button>
-      <button id="btnToggleSettings" class="icon-btn" title="Chọn file / thư mục máy">
-        📂 <span class="hide-mobile">File máy</span>
+      <button id="btnToggleSettings" class="icon-btn" title="Ẩn/Hiện thanh chọn file">
+        📂 <span class="hide-mobile">Menu File</span>
       </button>
     </div>
   </header>
 
-  <!-- FILE & FOLDER PICKER BAR -->
+  <!-- FILE PICKER BAR: 3 NÚT CHÍNH RÕ RÀNG -->
   <section id="filePickerSection" class="file-picker-section">
     <div class="file-picker-card">
-      <div class="file-input-group main-picker-group">
-        <label for="combinedFileInput" class="btn-combined" title="Quét chọn cả file PDF và MP3 cùng lúc từ máy">
-          ⚡ Chọn cả PDF & MP3 trên máy (Tự khớp)
-        </label>
-        <input type="file" id="combinedFileInput" accept=".pdf,audio/*,.json" multiple style="display:none;">
-      </div>
-
-      <div class="file-input-group folder-group">
-        <button id="btnPickFolder" class="btn-highlight" title="Chọn thư mục chứa cả PDF và MP3 trên máy">
-          📁 Mở thư mục máy
-        </button>
-        <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
-      </div>
-
-      <button id="btnBannerOnlineLink" class="btn-banner-link" title="Dán link Google Drive">
-        🔗 Nhập link Google Drive
+      
+      <!-- NÚT 1: THƯ MỤC NỘI DUNG (MÁY HOẶC GOOGLE DRIVE ONLINE) -->
+      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" title="Mở thư mục trên máy hoặc link Google Drive online">
+        📁 Nút 1: Thư mục / Drive
       </button>
+      <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
 
-      <!-- Tên các file đang nạp -->
+      <!-- NÚT 2: CHỌN FILE PDF (TỰ ĐỘNG MỞ MP3 VÀ MỐC NẾU ĐÃ TỪNG MỞ) -->
+      <label for="pdfFileInput" class="action-btn btn-node-2" title="Chọn file PDF truyện (Tự động nạp MP3 và mốc nếu đã từng mở)">
+        📄 Nút 2: Chọn PDF
+      </label>
+      <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none;">
+
+      <!-- NÚT 3: CHỌN FILE MP3 (TỰ ĐỘNG MỞ PDF VÀ MỐC NẾU ĐÃ TỪNG MỞ) -->
+      <label for="audioFileInput" class="action-btn btn-node-3" title="Chọn file MP3 đọc truyện (Tự động nạp PDF và mốc nếu đã từng mở)">
+        🎵 Nút 3: Chọn MP3
+      </label>
+      <input type="file" id="audioFileInput" accept="audio/*" style="display:none;">
+
+      <!-- TRẠNG THÁI FILE ĐANG NẠP -->
       <div class="active-files-indicator">
         <span id="pdfFileName" class="file-status-pill empty">📄 Chưa có PDF</span>
         <span id="audioFileName" class="file-status-pill empty">🎵 Chưa có MP3</span>
+        <span id="syncCountBadge" class="file-status-pill sync-pill empty">⏱️ 0 mốc</span>
       </div>
 
+      <!-- TÙY CHỌN TỰ ĐỘNG -->
       <div class="quick-options">
         <label class="toggle-label" title="Tự động lật trang khi audio đọc tới mốc thời gian">
           <input type="checkbox" id="chkAutoPageTurn" checked>
@@ -92,6 +91,7 @@
           <span>Lật trang tự tua</span>
         </label>
       </div>
+
     </div>
   </section>
 
@@ -115,18 +115,37 @@
     <div id="emptyState" class="empty-state">
       <div class="empty-icon">📚</div>
       <h2>Trình Đọc PDF & Khớp Audio Thông Minh</h2>
-      <p>Bạn có thể mở file trực tiếp từ <b>Google Drive</b> hoặc chọn file trên máy để vừa xem vừa nghe:</p>
-      <div class="empty-actions">
-        <button id="btnEmptyDrive" class="btn-combined-large">
-          🔗 Mở truyện từ link Google Drive
-        </button>
-        <label for="combinedFileInput" class="btn-secondary-large">
-          ⚡ Chọn file từ bộ nhớ máy
-        </label>
+      <p>Sử dụng 3 nút bấm phía trên để bắt đầu đọc và nghe:</p>
+      
+      <div class="empty-guide-card">
+        <div class="guide-item" id="cardGuideFolder">
+          <div class="item-icon">📁</div>
+          <div class="item-text">
+            <b>Nút 1: Thư mục / Drive</b>
+            <span>Mở thư mục trên máy hoặc dán link Google Drive online</span>
+          </div>
+        </div>
+
+        <div class="guide-item" id="cardGuidePdf">
+          <div class="item-icon">📄</div>
+          <div class="item-text">
+            <b>Nút 2: Chọn PDF</b>
+            <span>Tự động mở MP3 và các mốc thời gian nếu đã từng mở trước đó</span>
+          </div>
+        </div>
+
+        <div class="guide-item" id="cardGuideAudio">
+          <div class="item-icon">🎵</div>
+          <div class="item-text">
+            <b>Nút 3: Chọn MP3</b>
+            <span>Tự động mở PDF và các mốc thời gian nếu đã từng mở trước đó</span>
+          </div>
+        </div>
       </div>
+
       <div class="feature-tags">
-        <span>☁️ Nghe trực tuyến Google Drive</span>
-        <span>⚡ Tự động ghép đôi PDF + MP3</span>
+        <span>⚡ Tự động mở tất cả</span>
+        <span>☁️ Hỗ trợ Google Drive</span>
         <span>📖 2 Trang cùng lúc</span>
         <span>💾 Tự lưu mốc vào máy</span>
       </div>
@@ -192,44 +211,53 @@
     <audio id="audioElement" preload="metadata"></audio>
   </footer>
 
-  <!-- MODAL: NHẬP LINK GOOGLE DRIVE / LINK ONLINE -->
-  <div id="onlineLinkModal" class="modal-overlay hidden">
+  <!-- MODAL NÚT 1: CHỌN THƯ MỤC TRÊN MÁY HOẶC GOOGLE DRIVE -->
+  <div id="node1Modal" class="modal-overlay hidden">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>🔗 Mở từ link Google Drive / Online</h3>
-        <button id="btnCloseOnlineModal" class="close-btn">&times;</button>
+        <h3>📁 Nút 1: Mở thư mục nội dung (Máy hoặc Online)</h3>
+        <button id="btnCloseNode1Modal" class="close-btn">&times;</button>
       </div>
 
       <div class="modal-body">
-        <div class="guide-box">
-          <p><b>💡 Hướng dẫn lấy link trên Google Drive:</b></p>
-          <ol>
-            <li>Nhấp chuột phải vào file (PDF hoặc MP3) trên Drive > chọn <b>Chia sẻ (Share)</b>.</li>
-            <li>Đổi quyền truy cập thành: <b>"Bất kỳ ai có đường liên kết (Anyone with link)"</b>.</li>
-            <li>Bấm <b>Sao chép đường liên kết (Copy link)</b> rồi dán vào ô bên dưới:</li>
-          </ol>
-        </div>
-
-        <div class="form-group">
-          <label for="txtOnlinePdf">📄 Link file PDF Google Drive:</label>
-          <input type="text" id="txtOnlinePdf" class="text-input" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
-        </div>
-
-        <div class="form-group">
-          <label for="txtOnlineAudio">🎵 Link file MP3 Google Drive:</label>
-          <input type="text" id="txtOnlineAudio" class="text-input" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
-        </div>
-
-        <div class="modal-actions-right">
-          <button id="btnLoadOnlineLinks" class="btn-primary-large">
-            🚀 Tải & Mở truyện trực tuyến
+        <!-- LỰA CHỌN A: THƯ MỤC MÁY -->
+        <div class="option-block">
+          <h4>💻 Cách A: Thư mục trên máy tính / điện thoại</h4>
+          <p class="option-desc">Tự động nạp toàn bộ file PDF, file MP3 và mốc thời gian trong thư mục:</p>
+          <button id="btnTriggerFolderPicker" class="btn-primary-large">
+            📂 Chọn thư mục trên thiết bị
           </button>
         </div>
 
-        <!-- Lịch sử link đã mở -->
-        <div id="onlineHistorySection" class="history-section hidden">
-          <h4>🕒 Link đã mở gần đây:</h4>
-          <div id="onlineHistoryList" class="history-list"></div>
+        <div class="divider-text">HOẶC</div>
+
+        <!-- LỰA CHỌN B: GOOGLE DRIVE ONLINE -->
+        <div class="option-block">
+          <h4>☁️ Cách B: Link file trực tuyến từ Google Drive</h4>
+          <div class="guide-box">
+            <p><b>Cách lấy link:</b> Chuột phải vào file trên Drive > <b>Chia sẻ</b> > Đổi thành <b>"Bất kỳ ai có đường liên kết đều có thể xem"</b> > <b>Sao chép đường liên kết</b>.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="txtOnlinePdf">📄 Link file PDF Google Drive:</label>
+            <input type="text" id="txtOnlinePdf" class="text-input" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
+          </div>
+
+          <div class="form-group">
+            <label for="txtOnlineAudio">🎵 Link file MP3 Google Drive:</label>
+            <input type="text" id="txtOnlineAudio" class="text-input" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
+          </div>
+
+          <div class="modal-actions-right">
+            <button id="btnLoadOnlineLinks" class="btn-success-large">
+              🚀 Mở từ Google Drive
+            </button>
+          </div>
+
+          <div id="onlineHistorySection" class="history-section hidden">
+            <h4>🕒 Link Drive mở gần đây:</h4>
+            <div id="onlineHistoryList" class="history-list"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -245,7 +273,7 @@
 
       <div class="modal-body">
         <p class="modal-desc">
-          Khi audio chạy đến số giây này, truyện sẽ tự động chuyển sang trang tương ứng. Mốc thời gian được <b>tự động lưu vào thư mục truyện</b> và bộ nhớ máy.
+          Khi audio chạy đến số giây này, truyện sẽ tự động chuyển sang trang tương ứng:
         </p>
 
         <div class="sync-actions-row">
