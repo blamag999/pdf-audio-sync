@@ -25,7 +25,7 @@ const state = {
   isAudioDrivenChange: false,
 
   // CHẾ ĐỘ HIỂN THỊ
-  viewMode: 'fit-width',
+  viewMode: 'fit-height',
   zoomScale: 1.0,
 
   speeds: [0.75, 1.0, 1.25, 1.5, 1.75, 2.0],
@@ -125,7 +125,6 @@ async function getBookFromLibrary(key) {
 
 // DOM ELEMENTS
 const dom = {
-  btnFitWidth: document.getElementById('btnFitWidth'),
   btnFitHeight: document.getElementById('btnFitHeight'),
   btnTwoPages: document.getElementById('btnTwoPages'),
   btnZoomOut: document.getElementById('btnZoomOut'),
@@ -604,7 +603,6 @@ function initEvents() {
   dom.cardGuidePdf.addEventListener('click', () => dom.pdfFileInput.click());
   dom.cardGuideAudio.addEventListener('click', () => dom.audioFileInput.click());
 
-  dom.btnFitWidth.addEventListener('click', () => setViewMode('fit-width'));
   dom.btnFitHeight.addEventListener('click', () => setViewMode('fit-height'));
   dom.btnTwoPages.addEventListener('click', () => setViewMode('two-pages'));
   dom.btnZoomIn.addEventListener('click', () => changeZoom(0.15));
@@ -1059,7 +1057,6 @@ function setViewMode(mode) {
   state.zoomScale = 1.0;
   updateZoomLabel();
 
-  dom.btnFitWidth.classList.toggle('active', mode === 'fit-width');
   dom.btnFitHeight.classList.toggle('active', mode === 'fit-height');
   dom.btnTwoPages.classList.toggle('active', mode === 'two-pages');
 
