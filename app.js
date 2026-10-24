@@ -1,4 +1,4 @@
-﻿// Ứng dụng đọc PDF và đồng bộ Audio theo từng trang (PDF Audio Sync v5.5 - Sửa mốc online, GDrive, playlist multi-audio)
+// Ứng dụng đọc PDF và đồng bộ Audio theo từng trang (PDF Audio Sync v5.5 - Sửa mốc online, GDrive, playlist multi-audio)
 
 // STATE CHÍNH CỦA ỨNG DỤNG
 const state = {
@@ -1644,7 +1644,7 @@ function onAudioEnded() {
   const audios = state.currentStoryAudios;
   if (audios && audios.length > 1 && state.currentAudioIndex < audios.length - 1) {
     const nextIdx = state.currentAudioIndex + 1;
-    showToast(🎵 Tự động chuyển sang Part ...);
+    showToast('🎵 Tự động chuyển sang Part ' + (nextIdx + 1));
     loadAudioPart(nextIdx);
     // Tự động phát tiếp sau khi load
     setTimeout(() => {
