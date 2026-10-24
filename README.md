@@ -30,11 +30,11 @@
 1. Trên máy tính, nhấp đúp chuột vào file **`chay_server.bat`** (hoặc mở Terminal chạy `python server.py`).
 2. Màn hình sẽ hiện ra địa chỉ kết nối Wi-Fi, ví dụ:
    ```text
-   http://192.168.31.35:8080
+   http://192.168.xx.35:8080
    ```
 3. Đảm bảo điện thoại Android kết nối **chung mạng Wi-Fi** với máy tính:
    - Mở trình duyệt **Google Chrome** trên điện thoại.
-   - Gõ địa chỉ `http://192.168.31.35:8080`.
+   - Gõ địa chỉ `http://192.168.xx.35:8080`.
 4. **Cài đặt thành App ngoài màn hình chính**:
    - Trên Chrome điện thoại, bấm vào biểu tượng dấu **3 chấm [⋮]** ở góc trên bên phải.
    - Chọn **"Cài đặt ứng dụng"** (Install app) hoặc **"Thêm vào màn hình chính"** (Add to Home screen).

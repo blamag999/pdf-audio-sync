@@ -5,29 +5,32 @@ import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 print("=" * 65)
-print("      ĐẨY MÃ NGUỒN LÊN GITHUB: blamag999/pdf-audio-sync")
+print("   ĐẨY MÃ NGUỒN LÊN GITHUB (EP FORCE): blamag999/pdf-audio-sync")
 print("=" * 65)
-print("\nĐang thực hiện lệnh: git push -u origin main ...\n")
-print("💡 LƯU Ý: Nếu có cửa sổ của GitHub/Git Credential Manager hiện lên,")
-print("hãy bấm 'Sign in with your browser' để xác thực tài khoản nhé.\n")
+
+def run_cmd(args):
+    return subprocess.run(args, capture_output=True, text=True)
 
 try:
-    # Chạy lệnh git push
-    result = subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
+    # 1. Tự động commit nếu có thay đổi chưa lưu dưới local
+    status = run_cmd(["git", "status", "--porcelain"])
+    if status.stdout.strip():
+        print("\n📌 Phát hiện thay đổi chưa lưu, đang tự động commit...")
+        run_cmd(["git", "add", "."])
+        run_cmd(["git", "commit", "-m", "Auto commit before forced push"])
+
+    # 2. Thực hiện push force (Không cần pull)
+    print("\n🚀 Đang ép tải code lên GitHub (git push -u origin main --force) ...\n")
+    result = subprocess.run(["git", "push", "-u", "origin", "main", "--force"], check=True)
+    
     print("\n" + "=" * 65)
-    print("🎉 [THÀNH CÔNG] Toàn bộ mã nguồn đã được tải lên GitHub!")
+    print("🎉 [THÀNH CÔNG] Đã ghi đè mã nguồn lên GitHub thành công!")
     print("=" * 65)
-    print("\n👉 BƯỚC TIẾP THEO ĐỂ LẤY LINK THÀNH PHẨM TRÊN ĐIỆN THOẠI:")
-    print("1. Mở trang: https://github.com/blamag999/pdf-audio-sync/settings/pages")
-    print("2. Tại mục 'Build and deployment' -> 'Source':")
-    print("   Chọn 'GitHub Actions'")
-    print("3. Chờ khoảng 1 phút, link web của bạn sẽ xuất hiện tại:")
-    print("   👉 https://blamag999.github.io/pdf-audio-sync/")
-    print("=" * 65)
+
 except subprocess.CalledProcessError as e:
-    print("\n❌ LỖI: Không thể đẩy lên GitHub (mã lỗi:", e.returncode, ")")
-    print("Vui lòng kiểm tra lại quyền truy cập hoặc tài khoản GitHub.")
+    print("\n❌ LỖI: Không thể push lên GitHub (Mã lỗi:", e.returncode, ")")
+    print("Vui lòng kiểm tra lại kết nối mạng hoặc quyền truy cập tài khoản.")
 except Exception as e:
-    print("\n❌ LỖI:", str(e))
+    print("\n❌ LỖI KHÔNG XÁC ĐỊNH:", str(e))
 
 input("\nBấm Enter để đóng cửa sổ...")

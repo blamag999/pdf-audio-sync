@@ -1,4 +1,4 @@
-// Ứng dụng đọc PDF và đồng bộ Audio theo từng trang (PDF Audio Sync v5.2 - Sửa lỗi cách ly mốc & Hỗ trợ sync_data GitHub)
+﻿// Ứng dụng đọc PDF và đồng bộ Audio theo từng trang (PDF Audio Sync v5.5 - Sửa mốc online, GDrive, playlist multi-audio)
 
 // STATE CHÍNH CỦA ỨNG DỤNG
 const state = {
@@ -15,7 +15,7 @@ const state = {
   // DANH SÁCH TẬP TRUYỆN (PLAYLIST)
   playlist: [],
   currentStoryIndex: -1,
-  activeFilter: 'all',
+  activeFilter: 'paired', // Mac dinh chi hien tab co ca PDF & MP3
   searchQuery: '',
 
   // Mốc thời gian: { [pageNumber]: timestampInSeconds } (CHỈ DÀNH RIÊNG CHO CUỐN HIỆN TẠI)
@@ -29,7 +29,11 @@ const state = {
   zoomScale: 1.0,
 
   speeds: [0.75, 1.0, 1.25, 1.5, 1.75, 2.0],
-  speedIndex: 1
+  speedIndex: 1,
+
+  // MULTI-AUDIO STATE
+  currentAudioIndex: 0,   // Part dang phat trong currentStoryAudios
+  currentStoryAudios: []  // Danh sach audio parts cua story dang mo
 };
 
 // =======================================================
@@ -278,7 +282,30 @@ async function resetAndLoadSyncForBook(bookKey, attachedJsonBlob) {
     } catch (e) {}
   }
 
-  // 3. THỨ TỰ ƯU TIÊN 2: Kiểm tra trong bộ nhớ LocalStorage của trình duyệt
+  // 2b. TU DONG TIM JSON SYNC TRONG THU MUC (dirHandle) NEU CHUA CO BLOB
+  if (state.dirHandle && bookKey) {
+    var jsonNames = [
+      bookKey + '_sync.json',
+      bookKey + '.json'
+    ];
+    for (var ji = 0; ji < jsonNames.length; ji++) {
+      try {
+        var fh = await state.dirHandle.getFileHandle(jsonNames[ji]);
+        var djfile = await fh.getFile();
+        var djtext = await djfile.text();
+        var djparsed = JSON.parse(djtext);
+        if (djparsed && typeof djparsed === 'object' && Object.keys(djparsed).length > 0) {
+          state.pageTimestamps = djparsed;
+          saveSyncToStorage();
+          updatePageTimestampBadge();
+          updateSyncCountBadge();
+          updateSaveStatusBadge('Da nap moc tu folder: ' + jsonNames[ji]);
+          return;
+        }
+      } catch (eDir) {}
+    }
+  }
+// 3. THỨ TỰ ƯU TIÊN 2: Kiểm tra trong bộ nhớ LocalStorage của trình duyệt
   const storageKey = `sync_${bookKey}`;
   try {
     const raw = localStorage.getItem(storageKey);
@@ -331,8 +358,15 @@ async function resetAndLoadSyncForBook(bookKey, attachedJsonBlob) {
 // =======================================================
 function buildPlaylistFromItems(rawItems) {
   const groups = {};
+  const jsonItems = [];
 
-  rawItems.forEach(item => {
+  // Pass 1: Gom PDF va Audio truoc
+  rawItems.forEach(function(item) {
+    if (item.type === 'json') {
+      jsonItems.push(item);
+      return;
+    }
+
     const norm = normalizeStoryTitle(item.name);
     const key = norm.toLowerCase().replace(/\s+/g, "_");
 
@@ -349,18 +383,51 @@ function buildPlaylistFromItems(rawItems) {
     if (item.type === 'pdf') {
       groups[key].pdf = item;
     } else if (item.type === 'audio') {
+      const partMatch = item.name.match(/part[_\s-]*(\d+)|side[_\s-]*([ab])|disc[_\s-]*(\d+)|\b(\d+)\s*of\s*\d+/i);
+      item.partLabel = partMatch
+        ? (partMatch[1] ? ('Part ' + partMatch[1]) : partMatch[2] ? ('Side ' + partMatch[2].toUpperCase()) : partMatch[3] ? ('Disc ' + partMatch[3]) : ('Part ' + partMatch[4]))
+        : null;
       groups[key].audios.push(item);
-    } else if (item.type === 'json') {
-      // Chỉ gán JSON nếu tên file JSON thực sự khớp với tên truyện này
-      const jsonNorm = normalizeStoryTitle(item.name).toLowerCase().replace(/\s+/g, "_");
-      if (jsonNorm.includes(key) || key.includes(jsonNorm)) {
-        groups[key].json = item;
+    }
+  });
+
+  // Pass 2: Gan cac file JSON vao dung truyen
+  jsonItems.forEach(function(jItem) {
+    const jNorm = normalizeStoryTitle(jItem.name).toLowerCase().replace(/\s+/g, "_");
+    // 1. Khop chinh xac id
+    if (groups[jNorm]) {
+      groups[jNorm].json = jItem;
+      return;
+    }
+    // 2. Tim nhom nao co id nam trong ten file json hoac nguoc lai
+    for (const key of Object.keys(groups)) {
+      if (jNorm.includes(key) || key.includes(jNorm)) {
+        groups[key].json = jItem;
+        return;
       }
     }
   });
 
-  const playlistArray = Object.values(groups);
-  playlistArray.sort((a, b) => a.title.localeCompare(b.title, 'vi', { numeric: true }));
+  // Chi giu cac nhom co PDF hoac Audio (loai bo file json mo coi khong tao thanh card gia)
+  const playlistArray = Object.values(groups).filter(function(g) {
+    return g.pdf || (g.audios && g.audios.length > 0);
+  });
+
+  playlistArray.forEach(function(story) {
+    // Sap xep audio parts theo ten file (part 1 truoc part 2, v.v.)
+    story.audios.sort(function(a, b) {
+      return a.name.localeCompare(b.name, 'vi', { numeric: true });
+    });
+    // Gan label mac dinh neu chua co
+    if (story.audios.length > 1) {
+      story.audios.forEach(function(aud, i) {
+        if (!aud.partLabel) aud.partLabel = 'Part ' + (i + 1);
+      });
+    }
+  });
+  playlistArray.sort(function(a, b) {
+    return a.title.localeCompare(b.title, 'vi', { numeric: true });
+  });
 
   state.playlist = playlistArray;
   updatePlaylistBadgeCount();
@@ -369,13 +436,12 @@ function buildPlaylistFromItems(rawItems) {
   if (playlistArray.length > 0) {
     dom.lblPlaylistSubtitle = document.getElementById('lblPlaylistSubtitle');
     if (dom.lblPlaylistSubtitle) {
-      dom.lblPlaylistSubtitle.textContent = `Tìm thấy ${playlistArray.length} tập truyện trong thư mục`;
+      dom.lblPlaylistSubtitle.textContent = 'Tim thay ' + playlistArray.length + ' tap truyen trong thu muc';
     }
     dom.playlistModal.classList.remove('hidden');
-    showToast(`📚 Đã nạp danh sách ${playlistArray.length} tập truyện!`);
+    showToast('Da nap danh sach ' + playlistArray.length + ' tap truyen!');
   }
 }
-
 function updatePlaylistBadgeCount() {
   const count = state.playlist.length;
   if (count > 0) {
@@ -428,19 +494,37 @@ function renderPlaylistView() {
       });
     }
 
-    card.innerHTML = `
-      <div class="card-title-col">
-        <h4>${isPlaying ? '▶ ' : ''}${story.title}</h4>
-        <div class="card-tags">${tagsHtml}</div>
-      </div>
-      <button class="card-play-btn">
-        ${isPlaying ? 'Đang đọc' : '▶ Mở tập này'}
-      </button>
-    `;
+    // Audio parts buttons for multi-audio stories
+    var audioPartBtnsHtml = '';
+    if (story.audios && story.audios.length > 1) {
+      audioPartBtnsHtml = '<div class="card-audio-parts">';
+      story.audios.forEach(function(a, i) {
+        var lbl = a.partLabel || ('Part ' + (i + 1));
+        audioPartBtnsHtml += '<button class="card-part-btn" data-partidx="' + i + '" title="' + a.name + '">' + lbl + '</button>';
+      });
+      audioPartBtnsHtml += '</div>';
+    }
 
-    card.addEventListener('click', () => {
-      loadStoryFromPlaylist(story);
+    card.innerHTML =
+      '<div class="card-title-col">' +
+        '<h4>' + (isPlaying ? '&#9654; ' : '') + story.title + '</h4>' +
+        '<div class="card-tags">' + tagsHtml + '</div>' +
+        audioPartBtnsHtml +
+      '</div>' +
+      '<button class="card-play-btn">' + (isPlaying ? 'Dang doc' : '&#9654; Mo') + '</button>';
+
+    card.addEventListener('click', function(e) {
+      if (e.target.classList.contains('card-part-btn')) return;
+      loadStoryFromPlaylist(story, 0);
       dom.playlistModal.classList.add('hidden');
+    });
+    card.querySelectorAll('.card-part-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var partIdx = parseInt(btn.getAttribute('data-partidx'), 10);
+        loadStoryFromPlaylist(story, partIdx);
+        dom.playlistModal.classList.add('hidden');
+      });
     });
 
     dom.playlistItemsList.appendChild(card);
@@ -448,15 +532,17 @@ function renderPlaylistView() {
 }
 
 // MỞ TRUYỆN TỪ PLAYLIST (TỰ ĐỘNG NẠP MỐC ĐÚNG CUỐN ĐÓ)
-async function loadStoryFromPlaylist(story) {
+async function loadStoryFromPlaylist(story, audioPartIndex) {
   const uniqueKey = story.id;
   state.currentBookKey = uniqueKey;
+  state.currentStoryAudios = story.audios || [];
+  state.currentAudioIndex = (typeof audioPartIndex === 'number') ? audioPartIndex : 0;
 
-  // 1. Reset và nạp mốc riêng của cuốn này
+  // 1. Reset va nap moc rieng cua cuon nay
   const jsonBlob = story.json ? story.json.blob : null;
   await resetAndLoadSyncForBook(uniqueKey, jsonBlob);
 
-  // 2. Nạp PDF
+  // 2. Nap PDF
   if (story.pdf) {
     if (story.pdf.blob) {
       await loadPdfFromBlob(story.pdf.blob, false);
@@ -465,65 +551,150 @@ async function loadStoryFromPlaylist(story) {
     }
   }
 
-  // 3. Nạp MP3
-  if (story.audios && story.audios.length > 0) {
-    const primaryAudio = story.audios[0];
-    if (primaryAudio.blob) {
-      loadAudioFromBlob(primaryAudio.blob);
-    } else if (primaryAudio.url) {
-      loadAudioFromUrl(primaryAudio.url);
-    }
+  // 3. Nap audio part duoc chon
+  loadAudioPart(state.currentAudioIndex);
+
+  showToast('Dang mo: ' + story.title);
+  renderPlaylistView();
+  updateAudioPartUI();
+}
+
+// NAP MOT PART AUDIO CU THE
+function loadAudioPart(index) {
+  const audios = state.currentStoryAudios;
+  if (!audios || audios.length === 0) return;
+  const clampedIdx = Math.max(0, Math.min(index, audios.length - 1));
+  state.currentAudioIndex = clampedIdx;
+  const audio = audios[clampedIdx];
+  if (audio.blob) {
+    loadAudioFromBlob(audio.blob);
+  } else if (audio.url) {
+    loadAudioFromUrl(audio.url);
+  }
+  updateAudioPartUI();
+}
+
+// CAP NHAT UI THANH CHON AUDIO PART
+function updateAudioPartUI() {
+  const audios = state.currentStoryAudios;
+  let container = document.getElementById('audioPartSelector');
+
+  if (!audios || audios.length <= 1) {
+    if (container) container.classList.add('hidden');
+    return;
   }
 
-  showToast(`📖 Đang mở: ${story.title}`);
-  renderPlaylistView();
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'audioPartSelector';
+    container.className = 'audio-part-selector';
+    const footer = document.querySelector('.app-footer');
+    if (footer) footer.insertBefore(container, footer.firstChild);
+  }
+
+  container.classList.remove('hidden');
+  var html = '<span class="audio-part-label">Phan audio:</span>';
+  audios.forEach(function(a, i) {
+    var lbl = a.partLabel || ('Part ' + (i + 1));
+    var isActive = (i === state.currentAudioIndex) ? ' active' : '';
+    html += '<button class="audio-part-btn' + isActive + '" onclick="selectAudioPart(' + i + ')" title="' + a.name + '">' + lbl + '</button>';
+  });
+  container.innerHTML = html;
 }
+
+// CHON AUDIO PART
+window.selectAudioPart = function(index) {
+  loadAudioPart(index);
+  showToast('Chuyen sang Part ' + (index + 1));
+};
 
 // =======================================================
 // QUÉT THƯ MỤC GOOGLE DRIVE
 // =======================================================
-async function parseGoogleDriveFolderUrl(folderUrl) {
-  dom.lblLoadingText.textContent = 'Đang quét toàn bộ danh sách truyện trên Google Drive...';
-  dom.pdfLoadingIndicator.classList.remove('hidden');
+// QUET THU MUC GOOGLE DRIVE
+// =======================================================
 
-  try {
-    let html = null;
+function extractGDriveFolderId(url) {
+  const m = url.match(/\/folders\/([a-zA-Z0-9_-]{10,})/);
+  return m ? m[1] : null;
+}
+
+async function fetchWithProxy(rawUrl) {
+  const proxies = [
+    'https://corsproxy.io/?' + encodeURIComponent(rawUrl),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(rawUrl),
+  ];
+  for (const proxy of proxies) {
     try {
-      const pUrl = `https://corsproxy.io/?${encodeURIComponent(folderUrl)}`;
-      const res = await fetch(pUrl);
-      if (res.ok) html = await res.text();
+      const res = await fetch(proxy);
+      if (res.ok) {
+        const text = await res.text();
+        if (text && text.length > 100) return text;
+      }
     } catch (e) {}
+  }
+  return null;
+}
 
-    if (!html) {
-      const pUrl2 = `https://api.allorigins.win/raw?url=${encodeURIComponent(folderUrl)}`;
-      const res2 = await fetch(pUrl2);
-      if (res2.ok) html = await res2.text();
+async function parseGoogleDriveFolderUrl(folderUrl) {
+  dom.lblLoadingText.textContent = 'Dang quet thu muc Google Drive...';
+  dom.pdfLoadingIndicator.classList.remove('hidden');
+  const folderId = extractGDriveFolderId(folderUrl);
+  try {
+    let items = [];
+
+    // Phuong phap 1: Google Drive API v3
+    if (folderId) {
+      dom.lblLoadingText.textContent = 'Thu ket noi Google Drive API...';
+      const apiUrl = 'https://www.googleapis.com/drive/v3/files?q=%27' + folderId + '%27+in+parents&fields=files(id,name,mimeType)&key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY';
+      try {
+        const apiRes = await fetch(apiUrl);
+        if (apiRes.ok) {
+          const apiData = await apiRes.json();
+          if (apiData && apiData.files && apiData.files.length > 0) {
+            apiData.files.forEach(function(file) {
+              const lower = file.name.toLowerCase();
+              let type = 'unknown';
+              if (lower.endsWith('.pdf')) type = 'pdf';
+              else if (lower.endsWith('.mp3') || lower.endsWith('.m4a') || lower.endsWith('.wav') || lower.endsWith('.ogg') || lower.endsWith('.aac')) type = 'audio';
+              else if (lower.endsWith('.json')) type = 'json';
+              if (type !== 'unknown') {
+                items.push({ name: file.name, id: file.id, url: 'https://drive.google.com/uc?export=download&id=' + file.id, type: type });
+              }
+            });
+          }
+        }
+      } catch(e) {}
     }
 
-    if (!html) throw new Error('Không thể kết nối đến máy chủ Google Drive');
-
-    const pattern = /aria-label="([^"]+?\.(?:pdf|mp3|m4a|wav|aac|json))[^"]*"[^>]*?ssk=['"]5:[^:]+:([a-zA-Z0-9_-]{20,})/gi;
-    const items = [];
-    let match;
-
-    while ((match = pattern.exec(html)) !== null) {
-      const filename = match[1];
-      const fileId = match[2];
-      const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-
-      const lower = filename.toLowerCase();
-      let type = 'unknown';
-      if (lower.endsWith('.pdf')) type = 'pdf';
-      else if (lower.endsWith('.mp3') || lower.endsWith('.m4a') || lower.endsWith('.wav')) type = 'audio';
-      else if (lower.endsWith('.json')) type = 'json';
-
-      if (type !== 'unknown') {
-        items.push({
-          name: filename,
-          id: fileId,
-          url: directUrl,
-          type: type
-        });
+    // Phuong phap 2: Scrape HTML qua CORS proxy
+    if (items.length === 0) {
+      dom.lblLoadingText.textContent = 'Thu quet qua CORS proxy...';
+      const html = await fetchWithProxy(folderUrl);
+      if (html) {
+        const seen = new Set();
+        // Pattern: ["fileId","filename.pdf",...] in JSON data arrays
+        const re1 = /\["([a-zA-Z0-9_\-]{20,})"[^\]]*?"([^"]+\.(?:pdf|mp3|m4a|wav|ogg|aac|json))"/gi;
+        // Pattern: data-id="..." aria-label="filename"
+        const re2 = /data-id="([a-zA-Z0-9_\-]{20,})"[^>]*?>[^<]*<[^>]*?title="([^"]+\.(?:pdf|mp3|m4a|wav|ogg|aac|json))"/gi;
+        for (const re of [re1, re2]) {
+          let m2;
+          while ((m2 = re.exec(html)) !== null) {
+            const fileId = m2[1];
+            const filename = m2[2];
+            if (seen.has(fileId)) continue;
+            seen.add(fileId);
+            const lower = filename.toLowerCase();
+            let type = 'unknown';
+            if (lower.endsWith('.pdf')) type = 'pdf';
+            else if (lower.endsWith('.mp3') || lower.endsWith('.m4a') || lower.endsWith('.wav') || lower.endsWith('.ogg') || lower.endsWith('.aac')) type = 'audio';
+            else if (lower.endsWith('.json')) type = 'json';
+            if (type !== 'unknown') {
+              items.push({ name: filename, id: fileId, url: 'https://drive.google.com/uc?export=download&id=' + fileId, type: type });
+            }
+          }
+          if (items.length > 0) break;
+        }
       }
     }
 
@@ -531,22 +702,22 @@ async function parseGoogleDriveFolderUrl(folderUrl) {
 
     if (items.length > 0) {
       buildPlaylistFromItems(items);
-      showToast(`🎉 Đã quét được ${items.length} file trong thư mục Google Drive!`);
+      showToast('Da quet duoc ' + items.length + ' file trong thu muc Google Drive!');
       if (state.playlist.length > 0) {
-        loadStoryFromPlaylist(state.playlist[0]);
+        const firstPaired = state.playlist.find(function(s) { return s.pdf && s.audios.length > 0; }) || state.playlist[0];
+        loadStoryFromPlaylist(firstPaired, 0);
       }
       return true;
     } else {
-      alert('Không tìm thấy file nào trong thư mục Google Drive này. Hãy đảm bảo thư mục được chia sẻ ở chế độ "Bất kỳ ai có đường liên kết đều có thể xem"!');
+      alert('Khong tim thay file nao trong thu muc Google Drive nay.\n\nMeo:\n- Dam bao thu muc duoc chia se o che do "Bat ky ai co duong lien ket"\n- Thu dan truc tiep link tung file PDF/MP3 thay vi link thu muc');
       return false;
     }
   } catch (err) {
     dom.pdfLoadingIndicator.classList.add('hidden');
-    alert('Lỗi quét thư mục Google Drive: ' + err.message);
+    alert('Loi quet thu muc Google Drive: ' + err.message);
     return false;
   }
 }
-
 // =======================================================
 // SỰ KIỆN GIAO DIỆN
 // =======================================================
@@ -636,6 +807,7 @@ function initEvents() {
   dom.audioElement.addEventListener('loadedmetadata', onAudioMetadataLoaded);
   dom.audioElement.addEventListener('play', () => { dom.btnPlayPause.textContent = '⏸'; });
   dom.audioElement.addEventListener('pause', () => { dom.btnPlayPause.textContent = '▶'; });
+  dom.audioElement.addEventListener('ended', onAudioEnded);
 
   dom.audioSeeker.addEventListener('input', (e) => {
     dom.audioElement.currentTime = parseFloat(e.target.value);
@@ -1103,14 +1275,17 @@ function changePage(delta) {
 function updatePageTimestampBadge() {
   const ts = state.pageTimestamps[state.pageNum];
   if (typeof ts === 'number') {
-    dom.lblPageTimestamp.textContent = `Mốc: ${formatTime(ts)}`;
+    dom.lblPageTimestamp.textContent = 'Mốc: ' + formatTime(ts);
+    dom.lblPageTimestamp.style.color = '#38bdf8';
+  } else if (ts && typeof ts === 'object' && typeof ts.time === 'number') {
+    const partTxt = (ts.part !== undefined) ? (' (Part ' + (ts.part + 1) + ')') : '';
+    dom.lblPageTimestamp.textContent = 'Mốc: ' + formatTime(ts.time) + partTxt;
     dom.lblPageTimestamp.style.color = '#38bdf8';
   } else {
     dom.lblPageTimestamp.textContent = 'Mốc: Chưa gán';
     dom.lblPageTimestamp.style.color = '#94a3b8';
   }
 }
-
 function updateSaveStatusBadge(text) {
   dom.lblSaveStatus.textContent = text;
 }
@@ -1124,7 +1299,16 @@ async function pinCurrentTimeToPage() {
     return;
   }
   const currentTime = dom.audioElement.currentTime || 0;
-  state.pageTimestamps[state.pageNum] = Math.round(currentTime * 10) / 10;
+  const roundedTime = Math.round(currentTime * 10) / 10;
+
+  if (state.currentStoryAudios && state.currentStoryAudios.length > 1) {
+    state.pageTimestamps[state.pageNum] = {
+      time: roundedTime,
+      part: state.currentAudioIndex
+    };
+  } else {
+    state.pageTimestamps[state.pageNum] = roundedTime;
+  }
 
   // 1. Lưu vào LocalStorage
   saveSyncToStorage();
@@ -1135,14 +1319,13 @@ async function pinCurrentTimeToPage() {
   await autoSaveSyncToLocalDirectory();
 
   const originalText = dom.btnPinCurrentTime.textContent;
-  dom.btnPinCurrentTime.textContent = `Đã ghim: ${formatTime(currentTime)}!`;
+  dom.btnPinCurrentTime.textContent = 'Đã ghim: ' + formatTime(roundedTime) + '!';
   dom.btnPinCurrentTime.style.backgroundColor = '#10b981';
   setTimeout(() => {
     dom.btnPinCurrentTime.textContent = originalText;
     dom.btnPinCurrentTime.style.backgroundColor = '';
   }, 1200);
 }
-
 // Tự động ghi thẳng file mốc .json vào thư mục máy tính
 async function autoSaveSyncToLocalDirectory() {
   if (state.dirHandle && 'createWritable' in FileSystemFileHandle.prototype) {
@@ -1235,8 +1418,17 @@ function onAudioTimeUpdate() {
     let matchedPage = null;
     let maxTime = -1;
 
-    for (const [pageStr, timestamp] of Object.entries(state.pageTimestamps)) {
+    for (const [pageStr, rawTs] of Object.entries(state.pageTimestamps)) {
       const p = parseInt(pageStr, 10);
+      const isObj = (rawTs && typeof rawTs === 'object');
+      const timestamp = isObj ? rawTs.time : rawTs;
+      const part = isObj ? (rawTs.part || 0) : 0;
+
+      // Nếu truyện có nhiều part audio, chỉ khớp trang thuộc part audio đang phát
+      if (state.currentStoryAudios && state.currentStoryAudios.length > 1 && part !== state.currentAudioIndex) {
+        continue;
+      }
+
       if (curr >= timestamp && timestamp > maxTime) {
         maxTime = timestamp;
         matchedPage = p;
@@ -1261,7 +1453,6 @@ function onAudioTimeUpdate() {
     }
   }
 }
-
 function getStorageKey() {
   return `sync_${state.currentBookKey || 'default'}`;
 }
@@ -1286,30 +1477,38 @@ function renderSyncTable() {
 
   for (let p = 1; p <= total; p++) {
     const tr = document.createElement('tr');
-    const ts = state.pageTimestamps[p];
-    const hasTime = typeof ts === 'number';
+    const rawTs = state.pageTimestamps[p];
+    const hasTime = (typeof rawTs === 'number') || (rawTs && typeof rawTs === 'object' && typeof rawTs.time === 'number');
+    const sec = typeof rawTs === 'number' ? rawTs : (hasTime ? rawTs.time : 0);
+    const partNum = (hasTime && rawTs && rawTs.part !== undefined) ? rawTs.part : null;
+    const partTxt = (partNum !== null) ? (' <span style="font-size:0.75rem;color:#38bdf8;">(Part ' + (partNum + 1) + ')</span>') : '';
 
-    tr.innerHTML = `
-      <td><b>Trang ${p}</b></td>
-      <td>${hasTime ? formatTime(ts) : '<span style="color:#64748b;">(Chưa có)</span>'}</td>
-      <td>
-        ${hasTime ? `<button class="btn-mini-play" onclick="seekAndPlayTo(${ts}, ${p})">▶ Nghe thử</button>` : ''}
-        ${hasTime ? `<button class="btn-mini-del" onclick="deleteSync(${p})">✕ Xóa</button>` : ''}
-        <button class="btn-mini-play" onclick="setManualSync(${p})">✏️ Đặt</button>
-      </td>
-    `;
+    tr.innerHTML = '<td><b>Trang ' + p + '</b></td>' +
+      '<td>' + (hasTime ? (formatTime(sec) + partTxt) : '<span style="color:#64748b;">(Chưa có)</span>') + '</td>' +
+      '<td>' +
+        (hasTime ? ('<button class="btn-mini-play" onclick="seekAndPlayTo(' + sec + ', ' + p + ', ' + (partNum !== null ? partNum : 'null') + ')">▶ Nghe</button>') : '') +
+        (hasTime ? ('<button class="btn-mini-del" onclick="deleteSync(' + p + ')">✕ Xóa</button>') : '') +
+        '<button class="btn-mini-play" onclick="setManualSync(' + p + ')">✏️ Đặt</button>' +
+      '</td>';
     dom.syncTableBody.appendChild(tr);
   }
 }
 
-window.seekAndPlayTo = function(seconds, page) {
-  dom.audioElement.currentTime = seconds;
-  dom.audioElement.play();
+window.seekAndPlayTo = function(seconds, page, part) {
+  if (part !== null && part !== undefined && part !== state.currentAudioIndex && state.currentStoryAudios && state.currentStoryAudios[part]) {
+    loadAudioPart(part);
+    setTimeout(() => {
+      dom.audioElement.currentTime = seconds;
+      dom.audioElement.play();
+    }, 300);
+  } else {
+    dom.audioElement.currentTime = seconds;
+    dom.audioElement.play();
+  }
   state.pageNum = page;
   renderCurrentSpread();
   dom.syncModal.classList.add('hidden');
 };
-
 window.deleteSync = function(page) {
   delete state.pageTimestamps[page];
   saveSyncToStorage();
@@ -1438,6 +1637,20 @@ function debounce(func, wait) {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
   };
+}
+
+// TỰ ĐỘNG CHUYỂN SANG PART AUDIO TIẾP THEO KHI KẾT THÚC
+function onAudioEnded() {
+  const audios = state.currentStoryAudios;
+  if (audios && audios.length > 1 && state.currentAudioIndex < audios.length - 1) {
+    const nextIdx = state.currentAudioIndex + 1;
+    showToast(🎵 Tự động chuyển sang Part ...);
+    loadAudioPart(nextIdx);
+    // Tự động phát tiếp sau khi load
+    setTimeout(() => {
+      dom.audioElement.play().catch(() => {});
+    }, 500);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', initEvents);
