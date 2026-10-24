@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=yes">
+  <meta name="theme-color" content="#1e293b">
+  <title>Đọc Truyện & Khớp Audio (PDF Audio Sync)</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    // Chỉ định worker của pdf.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  </script>
+</head>
+<body>
+  <!-- HEADER & APP BAR -->
+  <header class="app-header">
+    <div class="header-left">
+      <h1 class="app-title">📖 PDF Audio Sync</h1>
+    </div>
+    <div class="header-right">
+      <button id="btnOpenSyncModal" class="icon-btn" title="Quản lý mốc đồng bộ thời gian">
+        ⚙️ <span class="hide-mobile">Mốc khớp trang</span>
+      </button>
+      <button id="btnToggleSettings" class="icon-btn" title="Cài đặt">
+        📂 <span class="hide-mobile">Chọn file</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- FILE PICKER BAR (DRAWER OR TOP BANNER) -->
+  <section id="filePickerSection" class="file-picker-section">
+    <div class="file-picker-card">
+      <div class="file-input-group">
+        <label for="pdfFileInput" class="btn-primary">
+          📄 Chọn file PDF truyện
+        </label>
+        <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none;">
+        <span id="pdfFileName" class="file-name-label">Chưa chọn PDF</span>
+      </div>
+
+      <div class="file-input-group">
+        <label for="audioFileInput" class="btn-success">
+          🎵 Chọn file MP3 đọc truyện
+        </label>
+        <input type="file" id="audioFileInput" accept="audio/*" style="display:none;">
+        <span id="audioFileName" class="file-name-label">Chưa chọn MP3</span>
+      </div>
+
+      <div class="quick-options">
+        <label class="toggle-label">
+          <input type="checkbox" id="chkAutoPageTurn" checked>
+          <span>Tự lật trang theo audio</span>
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="chkAutoSeekAudio" checked>
+          <span>Lật trang tự tua audio</span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN READING CANVAS AREA -->
+  <main class="viewer-container" id="viewerContainer">
+    <div id="pdfLoadingIndicator" class="loading-spinner hidden">
+      <div class="spinner"></div>
+      <p>Đang tải trang sách...</p>
+    </div>
+
+    <!-- Empty State Prompt -->
+    <div id="emptyState" class="empty-state">
+      <div class="empty-icon">📚</div>
+      <h2>Chào mừng bạn!</h2>
+      <p>Vui lòng bấm nút <b>"Chọn file PDF"</b> và <b>"Chọn file MP3"</b> ở trên để bắt đầu đọc và nghe.</p>
+      <div class="feature-tags">
+        <span>✨ Tự động chuyển trang</span>
+        <span>⏱️ Gán mốc thời gian 1 chạm</span>
+        <span>💾 Tự lưu vào máy</span>
+      </div>
+    </div>
+
+    <!-- PDF Canvas Container -->
+    <div id="canvasWrapper" class="canvas-wrapper hidden">
+      <canvas id="pdfCanvas"></canvas>
+    </div>
+  </main>
+
+  <!-- BOTTOM FLOATING AUDIO & SYNC CONTROLLER -->
+  <footer class="app-footer">
+    <!-- Mini Sync Banner -->
+    <div class="sync-banner">
+      <div class="sync-info">
+        <span class="page-badge">Trang <b id="lblCurrentPage">0</b> / <span id="lblTotalPages">0</span></span>
+        <span id="lblPageTimestamp" class="page-time-badge">Mốc: Chưa gán</span>
+      </div>
+      <!-- Nút gán mốc 1 chạm -->
+      <button id="btnPinCurrentTime" class="btn-pin" title="Gán giây hiện tại cho trang này">
+        📍 Ghim mốc giây này cho trang hiện tại
+      </button>
+    </div>
+
+    <!-- Audio Time & Scrubber -->
+    <div class="audio-scrubber-row">
+      <span id="lblAudioCurrentTime">00:00</span>
+      <input type="range" id="audioSeeker" min="0" max="100" value="0" step="0.1" class="audio-slider">
+      <span id="lblAudioDuration">00:00</span>
+    </div>
+
+    <!-- Playback Controls -->
+    <div class="controls-row">
+      <!-- Lật trang trước -->
+      <button id="btnPrevPage" class="ctrl-btn page-ctrl" title="Trang trước">
+        ◀ Trang
+      </button>
+
+      <!-- Tua lùi 5s -->
+      <button id="btnRewind5" class="ctrl-btn" title="Tua lùi 5s">
+        ↺ 5s
+      </button>
+
+      <!-- Play / Pause -->
+      <button id="btnPlayPause" class="ctrl-btn play-btn" title="Phát / Dừng">
+        ▶
+      </button>
+
+      <!-- Tua tiến 5s -->
+      <button id="btnForward5" class="ctrl-btn" title="Tua tiến 5s">
+        5s ↻
+      </button>
+
+      <!-- Lật trang sau -->
+      <button id="btnNextPage" class="ctrl-btn page-ctrl" title="Trang sau">
+        Trang ▶
+      </button>
+
+      <!-- Chỉnh tốc độ -->
+      <button id="btnSpeed" class="ctrl-btn speed-btn" title="Tốc độ đọc">
+        1.0x
+      </button>
+    </div>
+
+    <audio id="audioElement" preload="metadata"></audio>
+  </footer>
+
+  <!-- SYNC MANAGEMENT MODAL (DANH SÁCH MỐC THỜI GIAN KHỚP TRANG) -->
+  <div id="syncModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>⏱️ Quản lý mốc khớp thời gian các trang</h3>
+        <button id="btnCloseSyncModal" class="close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-desc">
+          Khi audio chạy đến số giây này, truyện sẽ tự động chuyển sang trang tương ứng:
+        </p>
+
+        <div class="sync-actions-row">
+          <button id="btnExportSync" class="btn-secondary">📤 Xuất file mốc (.json)</button>
+          <label for="importSyncInput" class="btn-secondary">
+            📥 Nhập file mốc
+          </label>
+          <input type="file" id="importSyncInput" accept=".json" style="display:none;">
+          <button id="btnClearSync" class="btn-danger">🗑️ Xóa hết mốc</button>
+        </div>
+
+        <div class="sync-table-container">
+          <table class="sync-table">
+            <thead>
+              <tr>
+                <th>Trang</th>
+                <th>Thời điểm bắt đầu</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="syncTableBody">
+              <!-- Render động danh sách các trang và timestamp -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed: ', err));
+      });
+    }
+  </script>
+</body>
+</html>
