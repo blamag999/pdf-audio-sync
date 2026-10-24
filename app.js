@@ -1,4 +1,4 @@
-// Ứng dụng đọc PDF và đồng bộ Audio theo từng trang (PDF Audio Sync v5.0 - Playlist Chọn Nhanh Tập Truyện)
+// Ứng dụng đọc PDF và đồng bộ Audio theo từng trang (PDF Audio Sync v5.2 - Sửa lỗi cách ly mốc & Hỗ trợ sync_data GitHub)
 
 // STATE CHÍNH CỦA ỨNG DỤNG
 const state = {
@@ -9,15 +9,16 @@ const state = {
   pageNumPending: null,
   pdfFileName: '',
   audioFileName: '',
-  currentBookKey: '',
+  currentBookKey: '', // Key định danh duy nhất của cuốn truyện hiện tại
+  dirHandle: null, // Thư mục trên máy tính nếu được cấp quyền ghi
 
   // DANH SÁCH TẬP TRUYỆN (PLAYLIST)
-  playlist: [], // [ { id, title, pdf, audios, json } ]
+  playlist: [],
   currentStoryIndex: -1,
   activeFilter: 'all',
   searchQuery: '',
 
-  // Mốc thời gian: { [pageNumber]: timestampInSeconds }
+  // Mốc thời gian: { [pageNumber]: timestampInSeconds } (CHỈ DÀNH RIÊNG CHO CUỐN HIỆN TẠI)
   pageTimestamps: {},
   autoPageTurn: true,
   autoSeekAudio: true,
@@ -32,7 +33,7 @@ const state = {
 };
 
 // =======================================================
-// INDEXEDDB THƯ VIỆN SÁCH
+// INDEXEDDB THƯ VIỆN SÁCH (CÁCH LY DỮ LIỆU TỪNG CUỐN)
 // =======================================================
 const DB_NAME = 'PdfAudioSyncDB';
 const DB_STORE = 'book_library';
@@ -55,21 +56,26 @@ function initIndexedDB() {
   });
 }
 
-function getFileStem(filename) {
-  if (!filename) return '';
-  return filename.replace(/\.[^/.]+$/, "").trim().toLowerCase();
+// Tạo key định danh duy nhất không trùng lặp cho mỗi truyện
+function getBookUniqueKey(pdfName, audioName) {
+  const name = pdfName || audioName || 'unnamed';
+  return name
+    .toLowerCase()
+    .replace(/\.[^/.]+$/, "")
+    .replace(/^[xX]22/g, "")
+    .replace(/[_\-\s,\.]+/g, "_")
+    .trim();
 }
 
-// Chuẩn hóa tên truyện để tự động ghép đôi PDF và MP3
 function normalizeStoryTitle(filename) {
   if (!filename) return '';
   return filename
-    .replace(/\.[^/.]+$/, "") // bỏ phần mở rộng .pdf / .mp3
-    .replace(/^[xX]22/g, "") // bỏ ký tự thừa Google Drive x22
-    .replace(/[_\-]+/g, " ") // đổi dấu gạch ngang/dưới thành dấu cách
-    .replace(/\bread[\s_-]*along\b/gi, "") // bỏ từ read along
+    .replace(/\.[^/.]+$/, "")
+    .replace(/^[xX]22/g, "")
+    .replace(/[_\-]+/g, " ")
+    .replace(/\bread[\s_-]*along\b/gi, "")
     .replace(/\bbook\b/gi, "")
-    .replace(/\bside[\s_-]*[0-9]+\b/gi, "") // bỏ side 1, side 2
+    .replace(/\bside[\s_-]*[0-9]+\b/gi, "")
     .replace(/\bpart[\s_-]*[0-9]+\b/gi, "")
     .replace(/[,\.]+/g, "")
     .replace(/\s+/g, " ")
@@ -92,7 +98,7 @@ async function saveBookToLibrary(bookData) {
         pdfBlob: bookData.pdfBlob || existing.pdfBlob || null,
         audioName: bookData.audioName || existing.audioName || '',
         audioBlob: bookData.audioBlob || existing.audioBlob || null,
-        timestamps: bookData.timestamps || existing.timestamps || {},
+        timestamps: (bookData.timestamps !== undefined) ? bookData.timestamps : (existing.timestamps || {}),
         updatedAt: Date.now()
       };
       store.put(merged);
@@ -198,6 +204,7 @@ const dom = {
   syncModal: document.getElementById('syncModal'),
   syncTableBody: document.getElementById('syncTableBody'),
   btnExportSync: document.getElementById('btnExportSync'),
+  btnSaveToGithubFolder: document.getElementById('btnSaveToGithubFolder'),
   importSyncInput: document.getElementById('importSyncInput'),
   btnClearSync: document.getElementById('btnClearSync'),
   toastMessage: document.getElementById('toastMessage')
@@ -232,8 +239,13 @@ function updateSyncCountBadge() {
   }
 }
 
-function resetSyncForNewDocument(newDocName) {
+// =======================================================
+// RESET VÀ NẠP MỐC CHUẨN XÁC THEO TỪNG CUỐN (FIX TRIỆT ĐỂ LỖI DỮ LIỆU LẠ)
+// =======================================================
+async function resetAndLoadSyncForBook(bookKey, attachedJsonBlob) {
+  // 1. Luôn xóa sạch toàn bộ mốc của cuốn trước đó khỏi RAM
   state.pageTimestamps = {};
+  state.currentBookKey = bookKey;
   state.pageNum = 1;
 
   if (dom.audioElement) {
@@ -249,22 +261,68 @@ function resetSyncForNewDocument(newDocName) {
   updateSaveStatusBadge('💾 Mới (Chưa có mốc)');
   updateSyncCountBadge();
 
-  if (newDocName) {
-    const key = `pdf_sync_${newDocName}`;
+  if (!bookKey) return;
+
+  // 2. THỨ TỰ ƯU TIÊN 1: Nếu có file JSON đi kèm trong thư mục
+  if (attachedJsonBlob) {
     try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-          state.pageTimestamps = parsed;
-          updateSaveStatusBadge('💾 Đã khôi phục mốc cũ');
-        }
+      const text = await attachedJsonBlob.text();
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object') {
+        state.pageTimestamps = parsed;
+        saveSyncToStorage();
+        updatePageTimestampBadge();
+        updateSyncCountBadge();
+        updateSaveStatusBadge('💾 Đã nạp từ file .json thư mục');
+        return;
       }
-    } catch (e) {
-      state.pageTimestamps = {};
-    }
+    } catch (e) {}
   }
 
+  // 3. THỨ TỰ ƯU TIÊN 2: Kiểm tra trong bộ nhớ LocalStorage của trình duyệt
+  const storageKey = `sync_${bookKey}`;
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+        state.pageTimestamps = parsed;
+        updatePageTimestampBadge();
+        updateSyncCountBadge();
+        updateSaveStatusBadge('💾 Đã nạp từ bộ nhớ máy');
+        return;
+      }
+    }
+  } catch (e) {}
+
+  // 4. THỨ TỰ ƯU TIÊN 3: Kiểm tra trong thư mục sync_data online trên GitHub
+  const cleanStem = normalizeStoryTitle(bookKey).toLowerCase().replace(/\s+/g, "_");
+  const candidates = [
+    `./sync_data/${bookKey}.json`,
+    `./sync_data/${cleanStem}.json`,
+    `./sync_data/${cleanStem}_read_along.json`
+  ];
+
+  for (const candidateUrl of candidates) {
+    try {
+      const res = await fetch(candidateUrl);
+      if (res.ok) {
+        const parsed = await res.json();
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+          state.pageTimestamps = parsed;
+          saveSyncToStorage();
+          updatePageTimestampBadge();
+          updateSyncCountBadge();
+          updateSaveStatusBadge('☁️ Đã nạp từ GitHub (sync_data)');
+          showToast(`☁️ Đã tải ${Object.keys(parsed).length} mốc từ thư mục online GitHub!`);
+          return;
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 5. Nếu không có mốc nào: Giữ nguyên rỗng {}
+  state.pageTimestamps = {};
   updatePageTimestampBadge();
   updateSyncCountBadge();
 }
@@ -273,12 +331,11 @@ function resetSyncForNewDocument(newDocName) {
 // XÂY DỰNG VÀ QUẢN LÝ DANH SÁCH TẬP TRUYỆN (PLAYLIST)
 // =======================================================
 function buildPlaylistFromItems(rawItems) {
-  // rawItems: mảng các { name, blob, id, url, type: 'pdf'|'audio'|'json' }
   const groups = {};
 
   rawItems.forEach(item => {
     const norm = normalizeStoryTitle(item.name);
-    const key = norm.toLowerCase();
+    const key = norm.toLowerCase().replace(/\s+/g, "_");
 
     if (!groups[key]) {
       groups[key] = {
@@ -295,12 +352,15 @@ function buildPlaylistFromItems(rawItems) {
     } else if (item.type === 'audio') {
       groups[key].audios.push(item);
     } else if (item.type === 'json') {
-      groups[key].json = item;
+      // Chỉ gán JSON nếu tên file JSON thực sự khớp với tên truyện này
+      const jsonNorm = normalizeStoryTitle(item.name).toLowerCase().replace(/\s+/g, "_");
+      if (jsonNorm.includes(key) || key.includes(jsonNorm)) {
+        groups[key].json = item;
+      }
     }
   });
 
   const playlistArray = Object.values(groups);
-  // Sắp xếp theo tên truyện A-Z
   playlistArray.sort((a, b) => a.title.localeCompare(b.title, 'vi', { numeric: true }));
 
   state.playlist = playlistArray;
@@ -312,7 +372,6 @@ function buildPlaylistFromItems(rawItems) {
     if (dom.lblPlaylistSubtitle) {
       dom.lblPlaylistSubtitle.textContent = `Tìm thấy ${playlistArray.length} tập truyện trong thư mục`;
     }
-    // Mở popup danh sách truyện cho người dùng chọn nhanh
     dom.playlistModal.classList.remove('hidden');
     showToast(`📚 Đã nạp danh sách ${playlistArray.length} tập truyện!`);
   }
@@ -334,14 +393,12 @@ function renderPlaylistView() {
   const filter = state.activeFilter;
 
   const filtered = state.playlist.filter(story => {
-    // 1. Lọc theo từ khóa tìm kiếm
     const matchQuery = !query || story.title.toLowerCase().includes(query) ||
       (story.pdf && story.pdf.name.toLowerCase().includes(query)) ||
       (story.audios.some(a => a.name.toLowerCase().includes(query)));
 
     if (!matchQuery) return false;
 
-    // 2. Lọc theo tab
     if (filter === 'paired') return story.pdf && story.audios.length > 0;
     if (filter === 'pdf') return !!story.pdf;
     if (filter === 'mp3') return story.audios.length > 0;
@@ -357,7 +414,7 @@ function renderPlaylistView() {
     return;
   }
 
-  filtered.forEach((story, idx) => {
+  filtered.forEach((story) => {
     const card = document.createElement('div');
     const isPlaying = (state.currentBookKey === story.id);
     card.className = `playlist-card ${isPlaying ? 'active-playing' : ''}`;
@@ -367,7 +424,7 @@ function renderPlaylistView() {
       tagsHtml += `<span class="mini-badge badge-pdf">📄 ${story.pdf.name}</span>`;
     }
     if (story.audios && story.audios.length > 0) {
-      story.audios.forEach((aud, aIdx) => {
+      story.audios.forEach((aud) => {
         tagsHtml += `<span class="mini-badge badge-mp3">🎵 ${aud.name}</span>`;
       });
     }
@@ -391,20 +448,25 @@ function renderPlaylistView() {
   });
 }
 
-// MỞ TRUYỆN TỪ PLAYLIST (TỰ ĐỘNG NẠP CẢ PDF VÀ MP3)
+// MỞ TRUYỆN TỪ PLAYLIST (TỰ ĐỘNG NẠP MỐC ĐÚNG CUỐN ĐÓ)
 async function loadStoryFromPlaylist(story) {
-  state.currentBookKey = story.id;
+  const uniqueKey = story.id;
+  state.currentBookKey = uniqueKey;
 
-  // 1. Nạp file PDF
+  // 1. Reset và nạp mốc riêng của cuốn này
+  const jsonBlob = story.json ? story.json.blob : null;
+  await resetAndLoadSyncForBook(uniqueKey, jsonBlob);
+
+  // 2. Nạp PDF
   if (story.pdf) {
     if (story.pdf.blob) {
-      await loadPdfFromBlob(story.pdf.blob);
+      await loadPdfFromBlob(story.pdf.blob, false);
     } else if (story.pdf.url) {
-      await loadPdfFromUrl(story.pdf.url);
+      await loadPdfFromUrl(story.pdf.url, false);
     }
   }
 
-  // 2. Nạp file MP3 (nếu có)
+  // 3. Nạp MP3
   if (story.audios && story.audios.length > 0) {
     const primaryAudio = story.audios[0];
     if (primaryAudio.blob) {
@@ -414,23 +476,12 @@ async function loadStoryFromPlaylist(story) {
     }
   }
 
-  // 3. Nạp file mốc JSON (nếu có)
-  if (story.json && story.json.blob) {
-    try {
-      const text = await story.json.blob.text();
-      state.pageTimestamps = JSON.parse(text);
-      saveSyncToStorage();
-      updatePageTimestampBadge();
-      updateSyncCountBadge();
-    } catch (e) {}
-  }
-
   showToast(`📖 Đang mở: ${story.title}`);
   renderPlaylistView();
 }
 
 // =======================================================
-// QUÉT THƯ MỤC GOOGLE DRIVE VÀ TỰ TRÍCH XUẤT TOÀN BỘ FILE
+// QUÉT THƯ MỤC GOOGLE DRIVE
 // =======================================================
 async function parseGoogleDriveFolderUrl(folderUrl) {
   dom.lblLoadingText.textContent = 'Đang quét toàn bộ danh sách truyện trên Google Drive...';
@@ -438,25 +489,20 @@ async function parseGoogleDriveFolderUrl(folderUrl) {
 
   try {
     let html = null;
-    // 1. Thử qua CORS Proxy 1
     try {
       const pUrl = `https://corsproxy.io/?${encodeURIComponent(folderUrl)}`;
       const res = await fetch(pUrl);
       if (res.ok) html = await res.text();
     } catch (e) {}
 
-    // 2. Fallback qua CORS Proxy 2
     if (!html) {
       const pUrl2 = `https://api.allorigins.win/raw?url=${encodeURIComponent(folderUrl)}`;
       const res2 = await fetch(pUrl2);
       if (res2.ok) html = await res2.text();
     }
 
-    if (!html) {
-      throw new Error('Không thể kết nối đến máy chủ Google Drive');
-    }
+    if (!html) throw new Error('Không thể kết nối đến máy chủ Google Drive');
 
-    // REGEX QUÉT TOÀN BỘ FILE TRONG HTML GOOGLE DRIVE
     const pattern = /aria-label="([^"]+?\.(?:pdf|mp3|m4a|wav|aac|json))[^"]*"[^>]*?ssk=['"]5:[^:]+:([a-zA-Z0-9_-]{20,})/gi;
     const items = [];
     let match;
@@ -487,7 +533,6 @@ async function parseGoogleDriveFolderUrl(folderUrl) {
     if (items.length > 0) {
       buildPlaylistFromItems(items);
       showToast(`🎉 Đã quét được ${items.length} file trong thư mục Google Drive!`);
-      // Mở ngay truyện đầu tiên
       if (state.playlist.length > 0) {
         loadStoryFromPlaylist(state.playlist[0]);
       }
@@ -496,7 +541,6 @@ async function parseGoogleDriveFolderUrl(folderUrl) {
       alert('Không tìm thấy file nào trong thư mục Google Drive này. Hãy đảm bảo thư mục được chia sẻ ở chế độ "Bất kỳ ai có đường liên kết đều có thể xem"!');
       return false;
     }
-
   } catch (err) {
     dom.pdfLoadingIndicator.classList.add('hidden');
     alert('Lỗi quét thư mục Google Drive: ' + err.message);
@@ -510,7 +554,6 @@ async function parseGoogleDriveFolderUrl(folderUrl) {
 function initEvents() {
   initIndexedDB();
 
-  // Nút mở Playlist
   dom.btnOpenPlaylist.addEventListener('click', () => {
     if (state.playlist.length === 0) {
       alert('Chưa có danh sách truyện. Vui lòng bấm Nút 1 để chọn thư mục trên máy hoặc dán link Google Drive!');
@@ -524,13 +567,11 @@ function initEvents() {
     if (e.target === dom.playlistModal) dom.playlistModal.classList.add('hidden');
   });
 
-  // Tìm kiếm trong Playlist
   dom.txtPlaylistSearch.addEventListener('input', (e) => {
     state.searchQuery = e.target.value;
     renderPlaylistView();
   });
 
-  // Lọc tab trong Playlist
   document.querySelectorAll('.filter-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
       document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
@@ -540,7 +581,6 @@ function initEvents() {
     });
   });
 
-  // NÚT 1: THƯ MỤC / DRIVE
   dom.btnNode1FolderOnline.addEventListener('click', () => {
     renderOnlineHistory();
     dom.node1Modal.classList.remove('hidden');
@@ -557,17 +597,13 @@ function initEvents() {
   dom.folderInput.addEventListener('change', (e) => handleFileList(Array.from(e.target.files)));
   dom.btnLoadOnlineLinks.addEventListener('click', handleLoadOnlineSubmit);
 
-  // NÚT 2: CHỌN PDF
   dom.pdfFileInput.addEventListener('change', handlePdfFileSelect);
-
-  // NÚT 3: CHỌN MP3
   dom.audioFileInput.addEventListener('change', handleAudioFileSelect);
 
   dom.cardGuideFolder.addEventListener('click', () => dom.btnNode1FolderOnline.click());
   dom.cardGuidePdf.addEventListener('click', () => dom.pdfFileInput.click());
   dom.cardGuideAudio.addEventListener('click', () => dom.audioFileInput.click());
 
-  // View controls
   dom.btnFitWidth.addEventListener('click', () => setViewMode('fit-width'));
   dom.btnFitHeight.addEventListener('click', () => setViewMode('fit-height'));
   dom.btnTwoPages.addEventListener('click', () => setViewMode('two-pages'));
@@ -614,6 +650,7 @@ function initEvents() {
   });
 
   dom.btnExportSync.addEventListener('click', exportSyncData);
+  dom.btnSaveToGithubFolder.addEventListener('click', exportSyncForGithub);
   dom.importSyncInput.addEventListener('change', importSyncData);
   dom.btnClearSync.addEventListener('click', clearAllSync);
 
@@ -631,31 +668,23 @@ async function handlePdfFileSelect(e) {
   const file = e.target.files[0];
   if (!file) return;
 
-  const stem = getFileStem(file.name);
-  state.currentBookKey = stem;
+  const key = getBookUniqueKey(file.name);
+  state.currentBookKey = key;
 
-  await loadPdfFromBlob(file);
+  // 1. Tải và hiển thị PDF (đã bao gồm reset và nạp mốc chuẩn của file này)
+  await loadPdfFromBlob(file, true);
 
-  const saved = await getBookFromLibrary(stem);
-  if (saved) {
-    if (saved.audioBlob) {
-      loadAudioFromBlob(saved.audioBlob);
-      showToast(`⚡ Đã tự động nạp MP3: ${saved.audioName}`);
-    }
-    if (saved.timestamps && Object.keys(saved.timestamps).length > 0) {
-      state.pageTimestamps = saved.timestamps;
-      saveSyncToStorage();
-      updatePageTimestampBadge();
-      updateSyncCountBadge();
-      showToast(`⚡ Đã tự động mở toàn bộ MP3 & ${Object.keys(saved.timestamps).length} mốc thời gian!`);
-    }
+  // 2. Tự động kiểm tra trong thư viện IndexedDB xem có file MP3 đã ghép đôi trước đó không
+  const saved = await getBookFromLibrary(key);
+  if (saved && saved.audioBlob) {
+    loadAudioFromBlob(saved.audioBlob);
+    showToast(`⚡ Đã tự động nạp MP3: ${saved.audioName}`);
   }
 
   saveBookToLibrary({
-    id: stem,
+    id: key,
     pdfName: file.name,
-    pdfBlob: file,
-    timestamps: state.pageTimestamps
+    pdfBlob: file
   });
 }
 
@@ -663,33 +692,23 @@ async function handleAudioFileSelect(e) {
   const file = e.target.files[0];
   if (!file) return;
 
-  const stem = getFileStem(file.name);
+  const key = getBookUniqueKey(file.name);
   loadAudioFromBlob(file);
 
   if (!state.pdfDoc) {
-    const saved = await getBookFromLibrary(stem);
-    if (saved) {
-      if (saved.pdfBlob) {
-        state.currentBookKey = stem;
-        await loadPdfFromBlob(saved.pdfBlob);
-        showToast(`⚡ Đã tự động mở PDF: ${saved.pdfName}`);
-      }
-      if (saved.timestamps && Object.keys(saved.timestamps).length > 0) {
-        state.pageTimestamps = saved.timestamps;
-        saveSyncToStorage();
-        updatePageTimestampBadge();
-        updateSyncCountBadge();
-        showToast(`⚡ Đã tự động mở toàn bộ PDF & ${Object.keys(saved.timestamps).length} mốc thời gian!`);
-      }
+    const saved = await getBookFromLibrary(key);
+    if (saved && saved.pdfBlob) {
+      state.currentBookKey = key;
+      await loadPdfFromBlob(saved.pdfBlob, true);
+      showToast(`⚡ Đã tự động mở PDF: ${saved.pdfName}`);
     }
   }
 
-  const key = state.currentBookKey || stem;
+  const currentKey = state.currentBookKey || key;
   saveBookToLibrary({
-    id: key,
+    id: currentKey,
     audioName: file.name,
-    audioBlob: file,
-    timestamps: state.pageTimestamps
+    audioBlob: file
   });
 }
 
@@ -699,9 +718,9 @@ async function handleAudioFileSelect(e) {
 async function handleFolderPick() {
   if ('showDirectoryPicker' in window) {
     try {
-      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      state.dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
       const files = [];
-      for await (const entry of dirHandle.values()) {
+      for await (const entry of state.dirHandle.values()) {
         if (entry.kind === 'file') {
           const file = await entry.getFile();
           files.push(file);
@@ -760,16 +779,14 @@ async function handleLoadOnlineSubmit() {
 
   dom.node1Modal.classList.add('hidden');
 
-  // NẾU LÀ LINK THƯ MỤC GOOGLE DRIVE:
   if (inputUrl.includes('/folders/')) {
     saveRecentOnlineLink(inputUrl, '📁 Thư mục Google Drive');
     await parseGoogleDriveFolderUrl(inputUrl);
     return;
   }
 
-  // NẾU LÀ LINK FILE LẺ:
   if (inputUrl) {
-    await loadPdfFromUrl(inputUrl);
+    await loadPdfFromUrl(inputUrl, true);
   }
   if (audioUrl) {
     loadAudioFromUrl(audioUrl);
@@ -792,7 +809,7 @@ function convertGoogleDriveUrl(rawUrl) {
   return url;
 }
 
-async function loadPdfFromUrl(url) {
+async function loadPdfFromUrl(url, shouldResetSync = true) {
   const directUrl = convertGoogleDriveUrl(url);
   dom.lblLoadingText.textContent = 'Đang tải PDF từ Google Drive...';
   dom.pdfLoadingIndicator.classList.remove('hidden');
@@ -818,11 +835,15 @@ async function loadPdfFromUrl(url) {
 
     const driveIdMatch = directUrl.match(/id=([a-zA-Z0-9_-]+)/);
     state.pdfFileName = driveIdMatch ? `Drive_PDF_${driveIdMatch[1]}` : 'Online_PDF_Book';
-    state.currentBookKey = state.pdfFileName.toLowerCase();
+    const key = state.currentBookKey || getBookUniqueKey(state.pdfFileName);
+    state.currentBookKey = key;
+
     dom.pdfFileName.textContent = `☁️ PDF Drive (${state.totalPages} trang)`;
     dom.pdfFileName.classList.remove('empty');
 
-    resetSyncForNewDocument(state.pdfFileName);
+    if (shouldResetSync) {
+      await resetAndLoadSyncForBook(key, null);
+    }
 
     dom.lblTotalPages.textContent = state.totalPages;
     dom.emptyState.classList.add('hidden');
@@ -898,16 +919,21 @@ function renderOnlineHistory() {
 }
 
 // =======================================================
-// RENDER PDF & CHẾ ĐỘ HIỂN THỊ
+// RENDER PDF
 // =======================================================
-async function loadPdfFromBlob(file) {
+async function loadPdfFromBlob(file, shouldResetSync = true) {
   state.pdfFileName = file.name;
   dom.pdfFileName.textContent = `📄 ${file.name}`;
   dom.pdfFileName.classList.remove('empty');
   dom.lblLoadingText.textContent = 'Đang tải trang sách...';
   dom.pdfLoadingIndicator.classList.remove('hidden');
 
-  resetSyncForNewDocument(file.name);
+  const key = getBookUniqueKey(file.name);
+  state.currentBookKey = key;
+
+  if (shouldResetSync) {
+    await resetAndLoadSyncForBook(key, null);
+  }
 
   try {
     const buffer = await file.arrayBuffer();
@@ -1093,7 +1119,7 @@ function updateSaveStatusBadge(text) {
 }
 
 // =======================================================
-// GHIM MỐC THỜI GIAN
+// GHIM MỐC & TỰ ĐỘNG GHI FILE VÀO THƯ MỤC TRÊN MÁY
 // =======================================================
 async function pinCurrentTimeToPage() {
   if (!state.pdfDoc) {
@@ -1103,17 +1129,13 @@ async function pinCurrentTimeToPage() {
   const currentTime = dom.audioElement.currentTime || 0;
   state.pageTimestamps[state.pageNum] = Math.round(currentTime * 10) / 10;
 
+  // 1. Lưu vào LocalStorage
   saveSyncToStorage();
   updatePageTimestampBadge();
   updateSyncCountBadge();
 
-  const key = state.currentBookKey || getFileStem(state.pdfFileName);
-  if (key) {
-    saveBookToLibrary({
-      id: key,
-      timestamps: state.pageTimestamps
-    });
-  }
+  // 2. Tự động lưu trực tiếp vào thư mục trên máy (nếu đang mở qua chọn thư mục)
+  await autoSaveSyncToLocalDirectory();
 
   const originalText = dom.btnPinCurrentTime.textContent;
   dom.btnPinCurrentTime.textContent = `Đã ghim: ${formatTime(currentTime)}!`;
@@ -1124,18 +1146,62 @@ async function pinCurrentTimeToPage() {
   }, 1200);
 }
 
-function getSyncFileName() {
-  const baseName = state.pdfFileName ? state.pdfFileName.replace(/\.[^/.]+$/, "") : "pdf_audio";
-  return `${baseName}_sync.json`;
+// Tự động ghi thẳng file mốc .json vào thư mục máy tính
+async function autoSaveSyncToLocalDirectory() {
+  if (state.dirHandle && 'createWritable' in FileSystemFileHandle.prototype) {
+    try {
+      const fileName = `${state.currentBookKey}_sync.json`;
+      const fileHandle = await state.dirHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(state.pageTimestamps, null, 2));
+      await writable.close();
+      updateSaveStatusBadge(`🟢 Đã tự lưu vào folder: ${fileName}`);
+      return true;
+    } catch (e) {
+      console.log('Không thể tự động ghi vào thư mục: ', e);
+    }
+  }
+  updateSaveStatusBadge('💾 Đã lưu vào bộ nhớ máy');
+  return false;
 }
 
-function saveSyncToDirectoryOrDownload() {
+function getSyncFileName() {
+  const base = state.currentBookKey || 'truyen';
+  return `${base}_sync.json`;
+}
+
+async function saveSyncToDirectoryOrDownload() {
   if (Object.keys(state.pageTimestamps).length === 0) {
     alert('Chưa có mốc thời gian nào để lưu!');
     return;
   }
-  exportSyncData();
-  showToast(`💾 Đã tải file mốc [${getSyncFileName()}] về máy!`);
+  const autoSaved = await autoSaveSyncToLocalDirectory();
+  if (autoSaved) {
+    showToast(`🟢 Đã lưu thẳng file mốc vào thư mục máy tính!`);
+  } else {
+    exportSyncData();
+    showToast(`💾 Đã tải file [${getSyncFileName()}] về máy!`);
+  }
+}
+
+// Xuất file cho thư mục sync_data trên GitHub
+function exportSyncForGithub() {
+  if (Object.keys(state.pageTimestamps).length === 0) {
+    alert('Chưa có mốc thời gian nào để lưu!');
+    return;
+  }
+  const cleanStem = normalizeStoryTitle(state.currentBookKey || 'online_story').toLowerCase().replace(/\s+/g, "_");
+  const fileName = `${cleanStem}.json`;
+
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.pageTimestamps, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", fileName);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+
+  alert(`🎉 Đã tải file mốc [${fileName}].\n👉 Bạn hãy copy file này bỏ vào thư mục "sync_data" trong code rồi bấm "day_len_github.bat" để lưu trữ vĩnh viễn trên GitHub nhé!`);
 }
 
 function togglePlayPause() {
@@ -1200,11 +1266,11 @@ function onAudioTimeUpdate() {
 }
 
 function getStorageKey() {
-  return `pdf_sync_${state.pdfFileName || 'default'}`;
+  return `sync_${state.currentBookKey || 'default'}`;
 }
 
 function saveSyncToStorage() {
-  if (!state.pdfFileName) return;
+  if (!state.currentBookKey) return;
   try {
     localStorage.setItem(getStorageKey(), JSON.stringify(state.pageTimestamps));
   } catch (e) {
@@ -1250,12 +1316,10 @@ window.seekAndPlayTo = function(seconds, page) {
 window.deleteSync = function(page) {
   delete state.pageTimestamps[page];
   saveSyncToStorage();
+  autoSaveSyncToLocalDirectory();
   updatePageTimestampBadge();
   updateSyncCountBadge();
   renderSyncTable();
-
-  const key = state.currentBookKey || getFileStem(state.pdfFileName);
-  if (key) saveBookToLibrary({ id: key, timestamps: state.pageTimestamps });
 };
 
 window.setManualSync = function(page) {
@@ -1275,27 +1339,23 @@ window.setManualSync = function(page) {
   if (!isNaN(seconds) && seconds >= 0) {
     state.pageTimestamps[page] = seconds;
     saveSyncToStorage();
+    autoSaveSyncToLocalDirectory();
     updatePageTimestampBadge();
     updateSyncCountBadge();
     renderSyncTable();
-
-    const key = state.currentBookKey || getFileStem(state.pdfFileName);
-    if (key) saveBookToLibrary({ id: key, timestamps: state.pageTimestamps });
   } else {
     alert('Giá trị thời gian không hợp lệ!');
   }
 };
 
 function clearAllSync() {
-  if (confirm('Bạn có chắc muốn xóa tất cả mốc đồng bộ của file này không?')) {
+  if (confirm('Bạn có chắc muốn xóa tất cả mốc đồng bộ của cuốn truyện này không?')) {
     state.pageTimestamps = {};
     saveSyncToStorage();
+    autoSaveSyncToLocalDirectory();
     updatePageTimestampBadge();
     updateSyncCountBadge();
     renderSyncTable();
-
-    const key = state.currentBookKey || getFileStem(state.pdfFileName);
-    if (key) saveBookToLibrary({ id: key, timestamps: state.pageTimestamps });
   }
 }
 
@@ -1320,13 +1380,10 @@ function importSyncData(e) {
       if (typeof imported === 'object') {
         state.pageTimestamps = imported;
         saveSyncToStorage();
+        autoSaveSyncToLocalDirectory();
         updatePageTimestampBadge();
         updateSyncCountBadge();
         renderSyncTable();
-
-        const key = state.currentBookKey || getFileStem(state.pdfFileName);
-        if (key) saveBookToLibrary({ id: key, timestamps: state.pageTimestamps });
-
         showToast('🎉 Nhập mốc thời gian thành công!');
       }
     } catch (err) {

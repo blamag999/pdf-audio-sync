@@ -316,12 +316,13 @@
         </p>
 
         <div class="sync-actions-row">
-          <button id="btnExportSync" class="btn-secondary">📤 Xuất file mốc (.json)</button>
+          <button id="btnExportSync" class="btn-secondary" title="Xuất file mốc để lưu vào thư mục truyện trên máy">📥 Tải file mốc cho thư mục máy (.json)</button>
+          <button id="btnSaveToGithubFolder" class="btn-primary" title="Tải file mốc để đưa vào thư mục sync_data trên GitHub">☁️ Tải file cho GitHub (sync_data)</button>
           <label for="importSyncInput" class="btn-secondary">
-            📥 Nhập file mốc
+            📂 Nhập file mốc từ máy
           </label>
           <input type="file" id="importSyncInput" accept=".json" style="display:none;">
-          <button id="btnClearSync" class="btn-danger">🗑️ Xóa hết mốc</button>
+          <button id="btnClearSync" class="btn-danger">🗑️ Xóa hết mốc của truyện này</button>
         </div>
 
         <div class="sync-table-container">
