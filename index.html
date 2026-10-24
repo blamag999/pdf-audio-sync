@@ -12,7 +12,6 @@
   <!-- PDF.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
-    // Chỉ định worker của pdf.js
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   </script>
 </head>
@@ -23,7 +22,7 @@
       <h1 class="app-title">📖 PDF Audio Sync</h1>
     </div>
 
-    <!-- VIEW MODE CONTROLS (Thanh điều chỉnh hiển thị PDF) -->
+    <!-- VIEW MODE CONTROLS -->
     <div class="view-controls-bar">
       <button id="btnFitWidth" class="view-btn active" title="Vừa chiều ngang màn hình (cuộn dọc)">
         ↔ <span class="hide-mobile">Vừa ngang</span>
@@ -55,30 +54,26 @@
   <!-- FILE & FOLDER PICKER BAR -->
   <section id="filePickerSection" class="file-picker-section">
     <div class="file-picker-card">
-      <!-- 1. MỞ CẢ THƯ MỤC TRUYỆN (Khuyên dùng để tự động lưu mốc vào chung thư mục) -->
+      <!-- 1. CHỌN CẢ PDF & MP3 CÙNG LÚC (TỰ ĐỘNG KHỚP CẶP) -->
+      <div class="file-input-group main-picker-group">
+        <label for="combinedFileInput" class="btn-combined" title="Quét chọn cả file PDF và MP3 cùng lúc, hệ thống sẽ tự động ghép đôi!">
+          ⚡ Chọn cả PDF & MP3 cùng lúc (Tự động khớp)
+        </label>
+        <input type="file" id="combinedFileInput" accept=".pdf,audio/*,.json" multiple style="display:none;">
+      </div>
+
+      <!-- 2. MỞ THƯ MỤC TRUYỆN -->
       <div class="file-input-group folder-group">
-        <button id="btnPickFolder" class="btn-highlight">
-          📁 Mở thư mục truyện (Tự động nhận PDF + MP3 + Mốc)
+        <button id="btnPickFolder" class="btn-highlight" title="Chọn thư mục chứa cả PDF và MP3">
+          📁 Mở cả thư mục
         </button>
         <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
-        <span id="folderNameLabel" class="file-name-label">Chưa chọn thư mục</span>
       </div>
 
-      <!-- Hoặc chọn lẻ từng file -->
-      <div class="file-input-group">
-        <label for="pdfFileInput" class="btn-primary">
-          📄 Chọn PDF
-        </label>
-        <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none;">
-        <span id="pdfFileName" class="file-name-label">Chưa chọn</span>
-      </div>
-
-      <div class="file-input-group">
-        <label for="audioFileInput" class="btn-success">
-          🎵 Chọn MP3
-        </label>
-        <input type="file" id="audioFileInput" accept="audio/*" style="display:none;">
-        <span id="audioFileName" class="file-name-label">Chưa chọn</span>
+      <!-- Tên các file đang nạp -->
+      <div class="active-files-indicator">
+        <span id="pdfFileName" class="file-status-pill empty">📄 Chưa có PDF</span>
+        <span id="audioFileName" class="file-status-pill empty">🎵 Chưa có MP3</span>
       </div>
 
       <div class="quick-options">
@@ -94,8 +89,17 @@
     </div>
   </section>
 
-  <!-- MAIN READING CANVAS AREA -->
+  <!-- MAIN READING CANVAS AREA (CÓ HỖ TRỢ KÉO THẢ DRAG & DROP) -->
   <main class="viewer-container" id="viewerContainer">
+    <!-- Overlay khi kéo thả file vào -->
+    <div id="dropOverlay" class="drop-overlay hidden">
+      <div class="drop-box">
+        <div class="drop-icon">📥</div>
+        <h3>Thả file PDF và MP3 vào đây!</h3>
+        <p>Ứng dụng sẽ tự động nhận diện và ghép đôi cho bạn</p>
+      </div>
+    </div>
+
     <div id="pdfLoadingIndicator" class="loading-spinner hidden">
       <div class="spinner"></div>
       <p>Đang tải trang sách...</p>
@@ -104,24 +108,21 @@
     <!-- Empty State Prompt -->
     <div id="emptyState" class="empty-state">
       <div class="empty-icon">📚</div>
-      <h2>Trình Đọc PDF & Khớp Audio Thông Minh</h2>
-      <p>Bấm nút <b>"📁 Mở thư mục truyện"</b> để tự động tải PDF, MP3 và file mốc thời gian cùng lúc!</p>
+      <h2>Trình Đọc PDF & Khớp Audio Tự Động</h2>
+      <p>Bấm nút <b>"⚡ Chọn cả PDF & MP3 cùng lúc"</b> hoặc kéo thả cả 2 file vào đây để tự động mở và ghép đôi!</p>
       <div class="feature-tags">
+        <span>⚡ Tự động ghép đôi PDF + MP3</span>
+        <span>💾 Nhớ Audio cho lần sau</span>
         <span>↔ Vừa ngang</span>
-        <span>↕ Vừa dọc</span>
-        <span>📖 2 Trang cùng lúc</span>
-        <span>💾 Tự lưu mốc vào thư mục</span>
+        <span>📖 2 Trang</span>
       </div>
     </div>
 
     <!-- PDF Canvas Container (Hỗ trợ 1 hoặc 2 trang song song) -->
     <div id="canvasWrapper" class="canvas-wrapper hidden">
-      <!-- Trang Trái (hoặc trang duy nhất khi ở chế độ 1 trang) -->
       <div class="canvas-page" id="pageLeftWrapper">
         <canvas id="pdfCanvasLeft"></canvas>
       </div>
-
-      <!-- Trang Phải (hiển thị khi ở chế độ 2 trang) -->
       <div class="canvas-page hidden" id="pageRightWrapper">
         <canvas id="pdfCanvasRight"></canvas>
       </div>
@@ -130,7 +131,6 @@
 
   <!-- BOTTOM FLOATING AUDIO & SYNC CONTROLLER -->
   <footer class="app-footer">
-    <!-- Mini Sync Banner -->
     <div class="sync-banner">
       <div class="sync-info">
         <span class="page-badge"><span id="lblPagePrefix">Trang</span> <b id="lblCurrentPage">0</b> / <span id="lblTotalPages">0</span></span>
@@ -139,52 +139,37 @@
       </div>
       
       <div class="sync-actions-mini">
-        <!-- Nút gán mốc 1 chạm -->
         <button id="btnPinCurrentTime" class="btn-pin" title="Gán giây hiện tại cho trang này">
           📍 Ghim mốc giây này cho trang
         </button>
-        <!-- Nút lưu mốc thủ công nếu cần -->
-        <button id="btnSaveToFolder" class="btn-save-mini" title="Lưu ngay file mốc vào thư mục hoặc tải về máy">
+        <button id="btnSaveToFolder" class="btn-save-mini" title="Lưu file mốc vào thư mục hoặc tải về máy">
           💾 Lưu mốc
         </button>
       </div>
     </div>
 
-    <!-- Audio Time & Scrubber -->
     <div class="audio-scrubber-row">
       <span id="lblAudioCurrentTime">00:00</span>
       <input type="range" id="audioSeeker" min="0" max="100" value="0" step="0.1" class="audio-slider">
       <span id="lblAudioDuration">00:00</span>
     </div>
 
-    <!-- Playback Controls -->
     <div class="controls-row">
-      <!-- Lật trang trước -->
       <button id="btnPrevPage" class="ctrl-btn page-ctrl" title="Trang trước">
         ◀ Trang
       </button>
-
-      <!-- Tua lùi 5s -->
       <button id="btnRewind5" class="ctrl-btn" title="Tua lùi 5s">
         ↺ 5s
       </button>
-
-      <!-- Play / Pause -->
       <button id="btnPlayPause" class="ctrl-btn play-btn" title="Phát / Dừng">
         ▶
       </button>
-
-      <!-- Tua tiến 5s -->
       <button id="btnForward5" class="ctrl-btn" title="Tua tiến 5s">
         5s ↻
       </button>
-
-      <!-- Lật trang sau -->
       <button id="btnNextPage" class="ctrl-btn page-ctrl" title="Trang sau">
         Trang ▶
       </button>
-
-      <!-- Chỉnh tốc độ -->
       <button id="btnSpeed" class="ctrl-btn speed-btn" title="Tốc độ đọc">
         1.0x
       </button>
@@ -225,13 +210,15 @@
               </tr>
             </thead>
             <tbody id="syncTableBody">
-              <!-- Render động danh sách các trang và timestamp -->
             </tbody>
           </table>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- TOAST THÔNG BÁO TỰ ĐỘNG -->
+  <div id="toastMessage" class="toast-message hidden"></div>
 
   <script src="app.js"></script>
   <script>
