@@ -1,4 +1,4 @@
-// Ứng dụng đọc PDF và đồng bộ Audio theo từng trang (PDF Audio Sync v3.0 - Online & Google Drive Support)
+// Ứng dụng đọc PDF và đồng bộ Audio theo từng trang (PDF Audio Sync v3.1 - Sửa lỗi lưu mốc file cũ)
 
 // STATE CHÍNH CỦA ỨNG DỤNG
 const state = {
@@ -171,14 +171,59 @@ function showToast(msg) {
 }
 
 // =======================================================
+// HÀM RESET MỐC THỜI GIAN KHI MỞ FILE MỚI (FIX LỖI MỐC CŨ)
+// =======================================================
+function resetSyncForNewDocument(newDocName) {
+  // 1. Luôn xóa sạch toàn bộ mốc của file cũ đang lưu trong biến RAM
+  state.pageTimestamps = {};
+  state.pageNum = 1;
+
+  // 2. Dừng phát audio cũ và tua về 00:00
+  if (dom.audioElement) {
+    dom.audioElement.pause();
+    dom.audioElement.currentTime = 0;
+  }
+  if (dom.audioSeeker) {
+    dom.audioSeeker.value = 0;
+  }
+  if (dom.lblAudioCurrentTime) {
+    dom.lblAudioCurrentTime.textContent = '00:00';
+  }
+
+  // 3. Cập nhật giao diện: hiển thị trang 1, mốc chưa gán
+  dom.lblCurrentPage.textContent = '1';
+  dom.lblPageTimestamp.textContent = 'Mốc: Chưa gán';
+  dom.lblPageTimestamp.style.color = '#94a3b8';
+  updateSaveStatusBadge('💾 Mới (Chưa có mốc)');
+
+  // 4. Kiểm tra xem file MỚI này có mốc đã lưu riêng cho nó trước đây không
+  if (newDocName) {
+    const key = `pdf_sync_${newDocName}`;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+          state.pageTimestamps = parsed;
+          showToast(`📖 Đã khôi phục ${Object.keys(parsed).length} mốc của file này`);
+          updateSaveStatusBadge('💾 Đã khôi phục mốc cũ');
+        }
+      }
+    } catch (e) {
+      state.pageTimestamps = {};
+    }
+  }
+
+  updatePageTimestampBadge();
+}
+
+// =======================================================
 // HỖ TRỢ GOOGLE DRIVE & ONLINE LINK
 // =======================================================
-// Chuyển link chia sẻ Google Drive thành link phát trực tiếp
 function convertGoogleDriveUrl(rawUrl) {
   if (!rawUrl) return '';
   const url = rawUrl.trim();
 
-  // Kiểm tra nếu là link Google Drive
   let fileId = null;
   const match1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
@@ -186,13 +231,11 @@ function convertGoogleDriveUrl(rawUrl) {
   else if (match2 && match2[1]) fileId = match2[1];
 
   if (fileId) {
-    // Trả về link download/stream trực tiếp của Google Drive
     return `https://drive.google.com/uc?export=download&id=${fileId}`;
   }
   return url;
 }
 
-// Nạp file PDF từ link online (có hỗ trợ proxy vượt tường lửa CORS nếu cần)
 async function loadPdfFromUrl(url) {
   const directUrl = convertGoogleDriveUrl(url);
   dom.lblLoadingText.textContent = 'Đang tải PDF từ Google Drive...';
@@ -201,7 +244,6 @@ async function loadPdfFromUrl(url) {
   try {
     let pdfData = null;
 
-    // 1. Thử fetch trực tiếp
     try {
       const response = await fetch(directUrl);
       if (response.ok) {
@@ -211,7 +253,6 @@ async function loadPdfFromUrl(url) {
       console.log('Direct fetch CORS error, trying CORS proxy fallback...');
     }
 
-    // 2. Nếu direct fetch bị chặn CORS, dùng proxy
     if (!pdfData) {
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(directUrl)}`;
       const proxyRes = await fetch(proxyUrl);
@@ -224,18 +265,20 @@ async function loadPdfFromUrl(url) {
     state.totalPages = state.pdfDoc.numPages;
     state.pageNum = 1;
 
-    // Đặt tên file định danh
+    // Đặt tên định danh cho file online
     const driveIdMatch = directUrl.match(/id=([a-zA-Z0-9_-]+)/);
     state.pdfFileName = driveIdMatch ? `Drive_PDF_${driveIdMatch[1]}` : 'Online_PDF_Book';
     dom.pdfFileName.textContent = `☁️ PDF Drive (${state.totalPages} trang)`;
     dom.pdfFileName.classList.remove('empty');
+
+    // RESET MỐC FILE CŨ NGAY KHI MỞ FILE ONLINE MỚI
+    resetSyncForNewDocument(state.pdfFileName);
 
     dom.lblTotalPages.textContent = state.totalPages;
     dom.emptyState.classList.add('hidden');
     dom.canvasWrapper.classList.remove('hidden');
     dom.pdfLoadingIndicator.classList.add('hidden');
 
-    loadSyncFromStorage();
     renderCurrentSpread();
     showToast('🎉 Đã tải file PDF từ Google Drive thành công!');
     return true;
@@ -246,7 +289,6 @@ async function loadPdfFromUrl(url) {
   }
 }
 
-// Nạp file MP3 từ link online
 function loadAudioFromUrl(url) {
   const directUrl = convertGoogleDriveUrl(url);
   const driveIdMatch = directUrl.match(/id=([a-zA-Z0-9_-]+)/);
@@ -254,12 +296,17 @@ function loadAudioFromUrl(url) {
   dom.audioFileName.textContent = `☁️ MP3 Drive Online`;
   dom.audioFileName.classList.remove('empty');
 
+  // Reset audio về 00:00
+  dom.audioElement.pause();
+  dom.audioElement.currentTime = 0;
+  if (dom.audioSeeker) dom.audioSeeker.value = 0;
+  if (dom.lblAudioCurrentTime) dom.lblAudioCurrentTime.textContent = '00:00';
+
   dom.audioElement.src = directUrl;
   dom.audioElement.load();
   showToast('🎵 Đã kết nối âm thanh Google Drive!');
 }
 
-// Quản lý lịch sử link đã mở gần đây
 function saveRecentOnlineLink(pdfUrl, audioUrl) {
   if (!pdfUrl && !audioUrl) return;
   try {
@@ -271,7 +318,7 @@ function saveRecentOnlineLink(pdfUrl, audioUrl) {
       audioUrl: audioUrl || '',
       time: Date.now()
     });
-    history = history.slice(0, 5); // Lưu tối đa 5 link gần nhất
+    history = history.slice(0, 5);
     localStorage.setItem('pdf_audio_online_history', JSON.stringify(history));
     renderOnlineHistory();
   } catch (e) {}
@@ -438,6 +485,7 @@ async function handleFileList(files) {
       selectedJson = jsonFiles.find(j => getFileStem(j.name).includes(pdfStem)) || jsonFiles[0];
     }
 
+    // Nạp PDF (hàm này đã tự động gọi resetSyncForNewDocument để xóa mốc file cũ)
     await loadPdfFromBlob(selectedPdf);
 
     if (selectedAudio) {
@@ -454,12 +502,14 @@ async function handleFileList(files) {
       }
     }
 
+    // Nếu người dùng có kèm theo file sync.json mới cho PDF này
     if (selectedJson) {
       try {
         const text = await selectedJson.text();
         state.pageTimestamps = JSON.parse(text);
         saveSyncToStorage();
         updatePageTimestampBadge();
+        showToast(`📥 Đã nạp mốc từ ${selectedJson.name}`);
       } catch (err) {
         console.error(err);
       }
@@ -551,6 +601,9 @@ async function loadPdfFromBlob(file) {
   dom.lblLoadingText.textContent = 'Đang tải trang sách...';
   dom.pdfLoadingIndicator.classList.remove('hidden');
 
+  // RESET VÀ XÓA SẠCH MỐC CỦA FILE CŨ
+  resetSyncForNewDocument(file.name);
+
   try {
     const buffer = await file.arrayBuffer();
     const typedarray = new Uint8Array(buffer);
@@ -563,7 +616,6 @@ async function loadPdfFromBlob(file) {
     dom.canvasWrapper.classList.remove('hidden');
     dom.pdfLoadingIndicator.classList.add('hidden');
 
-    loadSyncFromStorage();
     renderCurrentSpread();
   } catch (error) {
     alert('Không thể mở file PDF: ' + error.message);
@@ -575,6 +627,12 @@ function loadAudioFromBlob(file) {
   state.audioFileName = file.name;
   dom.audioFileName.textContent = `🎵 ${file.name}`;
   dom.audioFileName.classList.remove('empty');
+
+  // Reset audio player về 00:00
+  dom.audioElement.pause();
+  dom.audioElement.currentTime = 0;
+  if (dom.audioSeeker) dom.audioSeeker.value = 0;
+  if (dom.lblAudioCurrentTime) dom.lblAudioCurrentTime.textContent = '00:00';
 
   const objectUrl = URL.createObjectURL(file);
   dom.audioElement.src = objectUrl;
@@ -822,11 +880,11 @@ function onAudioTimeUpdate() {
 }
 
 function getStorageKey() {
-  return `pdf_sync_${state.pdfFileName || state.folderName || 'default'}`;
+  return `pdf_sync_${state.pdfFileName || 'default'}`;
 }
 
 function saveSyncToStorage() {
-  if (!state.pdfFileName && !state.folderName) return;
+  if (!state.pdfFileName) return;
   try {
     localStorage.setItem(getStorageKey(), JSON.stringify(state.pageTimestamps));
   } catch (e) {
@@ -835,14 +893,20 @@ function saveSyncToStorage() {
 }
 
 function loadSyncFromStorage() {
+  state.pageTimestamps = {};
   try {
     const raw = localStorage.getItem(getStorageKey());
     if (raw) {
-      state.pageTimestamps = JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        state.pageTimestamps = parsed;
+        return;
+      }
     }
   } catch (e) {
     console.error(e);
   }
+  state.pageTimestamps = {};
 }
 
 function openSyncModal() {
