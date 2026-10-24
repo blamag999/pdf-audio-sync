@@ -22,7 +22,7 @@
       <h1 class="app-title">📖 PDF Audio Sync</h1>
     </div>
 
-    <!-- VIEW MODE CONTROLS (Vừa ngang, Vừa dọc, 2 Trang, Zoom) -->
+    <!-- VIEW MODE CONTROLS -->
     <div class="view-controls-bar">
       <button id="btnFitWidth" class="view-btn active" title="Vừa chiều ngang màn hình (cuộn dọc)">
         ↔ <span class="hide-mobile">Vừa ngang</span>
@@ -42,9 +42,16 @@
     </div>
 
     <div class="header-right">
+      <!-- NÚT MỞ DANH SÁCH TẬP TRUYỆN (PLAYLIST) -->
+      <button id="btnOpenPlaylist" class="icon-btn playlist-btn" title="Xem danh sách các tập truyện trong thư mục">
+        📚 <span class="hide-mobile">Danh sách tập</span>
+        <span id="lblPlaylistCount" class="badge-count hidden">0</span>
+      </button>
+
       <button id="btnOpenSyncModal" class="icon-btn" title="Quản lý mốc đồng bộ thời gian">
         ⚙️ <span class="hide-mobile">Mốc khớp</span>
       </button>
+
       <button id="btnToggleSettings" class="icon-btn" title="Ẩn/Hiện thanh chọn file">
         📂 <span class="hide-mobile">Menu File</span>
       </button>
@@ -97,7 +104,6 @@
 
   <!-- MAIN READING CANVAS AREA -->
   <main class="viewer-container" id="viewerContainer">
-    <!-- Overlay khi kéo thả file vào -->
     <div id="dropOverlay" class="drop-overlay hidden">
       <div class="drop-box">
         <div class="drop-icon">📥</div>
@@ -115,14 +121,14 @@
     <div id="emptyState" class="empty-state">
       <div class="empty-icon">📚</div>
       <h2>Trình Đọc PDF & Khớp Audio Thông Minh</h2>
-      <p>Sử dụng 3 nút bấm phía trên để bắt đầu đọc và nghe:</p>
+      <p>Chọn thư mục hoặc dán link Google Drive để hiện danh sách toàn bộ các tập truyện:</p>
       
       <div class="empty-guide-card">
         <div class="guide-item" id="cardGuideFolder">
           <div class="item-icon">📁</div>
           <div class="item-text">
-            <b>Nút 1: Thư mục / Drive</b>
-            <span>Mở thư mục trên máy hoặc dán link Google Drive online</span>
+            <b>Nút 1: Thư mục máy hoặc Link Google Drive</b>
+            <span>Hiện danh sách toàn bộ truyện & audio để chọn nhanh chỉ 1 chạm</span>
           </div>
         </div>
 
@@ -144,8 +150,8 @@
       </div>
 
       <div class="feature-tags">
-        <span>⚡ Tự động mở tất cả</span>
-        <span>☁️ Hỗ trợ Google Drive</span>
+        <span>⚡ Danh sách tập chọn nhanh</span>
+        <span>☁️ Hỗ trợ trọn thư mục Drive</span>
         <span>📖 2 Trang cùng lúc</span>
         <span>💾 Tự lưu mốc vào máy</span>
       </div>
@@ -223,7 +229,7 @@
         <!-- LỰA CHỌN A: THƯ MỤC MÁY -->
         <div class="option-block">
           <h4>💻 Cách A: Thư mục trên máy tính / điện thoại</h4>
-          <p class="option-desc">Tự động nạp toàn bộ file PDF, file MP3 và mốc thời gian trong thư mục:</p>
+          <p class="option-desc">Quét toàn bộ thư mục và hiện danh sách các tập PDF & MP3 để chọn nhanh:</p>
           <button id="btnTriggerFolderPicker" class="btn-primary-large">
             📂 Chọn thư mục trên thiết bị
           </button>
@@ -233,31 +239,64 @@
 
         <!-- LỰA CHỌN B: GOOGLE DRIVE ONLINE -->
         <div class="option-block">
-          <h4>☁️ Cách B: Link file trực tuyến từ Google Drive</h4>
+          <h4>☁️ Cách B: Dán link THƯ MỤC hoặc FILE từ Google Drive</h4>
           <div class="guide-box">
-            <p><b>Cách lấy link:</b> Chuột phải vào file trên Drive > <b>Chia sẻ</b> > Đổi thành <b>"Bất kỳ ai có đường liên kết đều có thể xem"</b> > <b>Sao chép đường liên kết</b>.</p>
+            <p><b>💡 Mẹo:</b> Bạn có thể dán trực tiếp link cả THƯ MỤC Google Drive (như <code>https://drive.google.com/drive/folders/...</code>), ứng dụng sẽ tự động quét và liệt kê toàn bộ truyện bên trong!</p>
           </div>
 
           <div class="form-group">
-            <label for="txtOnlinePdf">📄 Link file PDF Google Drive:</label>
-            <input type="text" id="txtOnlinePdf" class="text-input" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
+            <label for="txtOnlineFolder">🔗 Link thư mục Google Drive (hoặc link PDF):</label>
+            <input type="text" id="txtOnlineFolder" class="text-input" placeholder="https://drive.google.com/drive/folders/1zWdlrJklSiy2c0fGuaGssV3Rb11NYc7f">
           </div>
 
           <div class="form-group">
-            <label for="txtOnlineAudio">🎵 Link file MP3 Google Drive:</label>
-            <input type="text" id="txtOnlineAudio" class="text-input" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
+            <label for="txtOnlineAudio">🎵 Link file MP3 (nếu là file lẻ):</label>
+            <input type="text" id="txtOnlineAudio" class="text-input" placeholder="(Không bắt buộc nếu đã nhập link thư mục ở trên)">
           </div>
 
           <div class="modal-actions-right">
             <button id="btnLoadOnlineLinks" class="btn-success-large">
-              🚀 Mở từ Google Drive
+              🚀 Quét & Mở danh sách truyện
             </button>
           </div>
 
           <div id="onlineHistorySection" class="history-section hidden">
-            <h4>🕒 Link Drive mở gần đây:</h4>
+            <h4>🕒 Thư mục Drive mở gần đây:</h4>
             <div id="onlineHistoryList" class="history-list"></div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL / DRAWER: DANH SÁCH TẬP TRUYỆN CHỌN NHANH (PLAYLIST DRAWER) -->
+  <div id="playlistModal" class="modal-overlay hidden">
+    <div class="modal-content playlist-modal-content">
+      <div class="modal-header">
+        <div class="playlist-header-title">
+          <h3>📚 Danh sách tập truyện</h3>
+          <span id="lblPlaylistSubtitle" class="playlist-subtitle">Đang tải...</span>
+        </div>
+        <button id="btnClosePlaylist" class="close-btn">&times;</button>
+      </div>
+
+      <div class="playlist-search-bar">
+        <input type="text" id="txtPlaylistSearch" class="search-input" placeholder="🔍 Tìm kiếm tập truyện...">
+        <div class="playlist-filter-tabs">
+          <button class="filter-tab active" data-filter="all">Tất cả</button>
+          <button class="filter-tab" data-filter="paired">Có cả PDF & MP3</button>
+          <button class="filter-tab" data-filter="pdf">Chỉ PDF</button>
+          <button class="filter-tab" data-filter="mp3">Chỉ MP3</button>
+        </div>
+      </div>
+
+      <div class="modal-body playlist-body">
+        <div id="playlistLoading" class="loading-spinner-inline hidden">
+          <div class="spinner"></div>
+          <p>Đang quét các tập truyện trong thư mục...</p>
+        </div>
+        <div id="playlistItemsList" class="playlist-items-list">
+          <!-- Render danh sách tập truyện tự động -->
         </div>
       </div>
     </div>
