@@ -1,4 +1,4 @@
-// Ứng dụng đọc PDF và đồng bộ Audio theo từng trang (PDF Audio Sync)
+// Ứng dụng đọc PDF và đồng bộ Audio theo từng trang (PDF Audio Sync v2.0)
 
 // STATE CHÍNH CỦA ỨNG DỤNG
 const state = {
@@ -9,17 +9,37 @@ const state = {
   pageNumPending: null,
   pdfFileName: '',
   audioFileName: '',
-  // Mảng hoặc object lưu mốc thời gian: { [pageNumber]: timestampInSeconds }
+  folderName: '',
+  dirHandle: null, // File System Access API directory handle (nếu được hỗ trợ)
+
+  // Mốc thời gian: { [pageNumber]: timestampInSeconds }
   pageTimestamps: {},
   autoPageTurn: true,
   autoSeekAudio: true,
-  isAudioDrivenChange: false, // Flag để tránh lặp vô tận khi audio chuyển trang rồi trang lại tua audio
+  isAudioDrivenChange: false,
+
+  // CHẾ ĐỘ HIỂN THỊ (VIEW MODES)
+  viewMode: 'fit-width', // 'fit-width' | 'fit-height' | 'two-pages'
+  zoomScale: 1.0,
+
   speeds: [0.75, 1.0, 1.25, 1.5, 1.75, 2.0],
   speedIndex: 1
 };
 
 // DOM ELEMENTS
 const dom = {
+  // View controls
+  btnFitWidth: document.getElementById('btnFitWidth'),
+  btnFitHeight: document.getElementById('btnFitHeight'),
+  btnTwoPages: document.getElementById('btnTwoPages'),
+  btnZoomOut: document.getElementById('btnZoomOut'),
+  btnZoomIn: document.getElementById('btnZoomIn'),
+  lblZoomLevel: document.getElementById('lblZoomLevel'),
+
+  // File pickers
+  btnPickFolder: document.getElementById('btnPickFolder'),
+  folderInput: document.getElementById('folderInput'),
+  folderNameLabel: document.getElementById('folderNameLabel'),
   pdfFileInput: document.getElementById('pdfFileInput'),
   audioFileInput: document.getElementById('audioFileInput'),
   pdfFileName: document.getElementById('pdfFileName'),
@@ -27,22 +47,30 @@ const dom = {
   filePickerSection: document.getElementById('filePickerSection'),
   btnToggleSettings: document.getElementById('btnToggleSettings'),
 
+  // Viewer
   viewerContainer: document.getElementById('viewerContainer'),
   emptyState: document.getElementById('emptyState'),
   canvasWrapper: document.getElementById('canvasWrapper'),
-  pdfCanvas: document.getElementById('pdfCanvas'),
+  pageLeftWrapper: document.getElementById('pageLeftWrapper'),
+  pageRightWrapper: document.getElementById('pageRightWrapper'),
+  pdfCanvasLeft: document.getElementById('pdfCanvasLeft'),
+  pdfCanvasRight: document.getElementById('pdfCanvasRight'),
   pdfLoadingIndicator: document.getElementById('pdfLoadingIndicator'),
 
+  // Badges
+  lblPagePrefix: document.getElementById('lblPagePrefix'),
   lblCurrentPage: document.getElementById('lblCurrentPage'),
   lblTotalPages: document.getElementById('lblTotalPages'),
   lblPageTimestamp: document.getElementById('lblPageTimestamp'),
+  lblSaveStatus: document.getElementById('lblSaveStatus'),
   btnPinCurrentTime: document.getElementById('btnPinCurrentTime'),
+  btnSaveToFolder: document.getElementById('btnSaveToFolder'),
 
+  // Audio player
   audioElement: document.getElementById('audioElement'),
   audioSeeker: document.getElementById('audioSeeker'),
   lblAudioCurrentTime: document.getElementById('lblAudioCurrentTime'),
   lblAudioDuration: document.getElementById('lblAudioDuration'),
-
   btnPrevPage: document.getElementById('btnPrevPage'),
   btnNextPage: document.getElementById('btnNextPage'),
   btnPlayPause: document.getElementById('btnPlayPause'),
@@ -50,9 +78,11 @@ const dom = {
   btnForward5: document.getElementById('btnForward5'),
   btnSpeed: document.getElementById('btnSpeed'),
 
+  // Checkboxes
   chkAutoPageTurn: document.getElementById('chkAutoPageTurn'),
   chkAutoSeekAudio: document.getElementById('chkAutoSeekAudio'),
 
+  // Modal
   btnOpenSyncModal: document.getElementById('btnOpenSyncModal'),
   btnCloseSyncModal: document.getElementById('btnCloseSyncModal'),
   syncModal: document.getElementById('syncModal'),
@@ -77,47 +107,49 @@ function formatTime(seconds) {
 
 // KHỞI TẠO CÁC SỰ KIỆN
 function initEvents() {
-  // Chọn file PDF
-  dom.pdfFileInput.addEventListener('change', handlePdfFileSelect);
+  // Chế độ xem PDF
+  dom.btnFitWidth.addEventListener('click', () => setViewMode('fit-width'));
+  dom.btnFitHeight.addEventListener('click', () => setViewMode('fit-height'));
+  dom.btnTwoPages.addEventListener('click', () => setViewMode('two-pages'));
+  dom.btnZoomIn.addEventListener('click', () => changeZoom(0.15));
+  dom.btnZoomOut.addEventListener('click', () => changeZoom(-0.15));
 
-  // Chọn file Audio MP3
+  // Chọn thư mục truyện (PDF + MP3 + Mốc)
+  dom.btnPickFolder.addEventListener('click', handleFolderPick);
+  dom.folderInput.addEventListener('change', handleFolderFilesSelected);
+
+  // Chọn lẻ PDF & MP3
+  dom.pdfFileInput.addEventListener('change', handlePdfFileSelect);
   dom.audioFileInput.addEventListener('change', handleAudioFileSelect);
 
-  // Toggle ẩn hiện phần chọn file
+  // Toggle bảng chọn file
   dom.btnToggleSettings.addEventListener('click', () => {
     dom.filePickerSection.classList.toggle('collapsed');
   });
 
   // Tùy chọn tự động
-  dom.chkAutoPageTurn.addEventListener('change', (e) => {
-    state.autoPageTurn = e.target.checked;
-  });
-  dom.chkAutoSeekAudio.addEventListener('change', (e) => {
-    state.autoSeekAudio = e.target.checked;
-  });
+  dom.chkAutoPageTurn.addEventListener('change', (e) => { state.autoPageTurn = e.target.checked; });
+  dom.chkAutoSeekAudio.addEventListener('change', (e) => { state.autoSeekAudio = e.target.checked; });
 
   // Điều khiển lật trang
   dom.btnPrevPage.addEventListener('click', () => changePage(-1));
   dom.btnNextPage.addEventListener('click', () => changePage(1));
 
-  // Ghim mốc thời gian cho trang hiện tại
+  // Ghim mốc & Lưu mốc vào thư mục
   dom.btnPinCurrentTime.addEventListener('click', pinCurrentTimeToPage);
+  dom.btnSaveToFolder.addEventListener('click', saveSyncToDirectoryOrDownload);
 
   // Audio Play/Pause
   dom.btnPlayPause.addEventListener('click', togglePlayPause);
-
-  // Tua 5s
   dom.btnRewind5.addEventListener('click', () => {
     dom.audioElement.currentTime = Math.max(0, dom.audioElement.currentTime - 5);
   });
   dom.btnForward5.addEventListener('click', () => {
     dom.audioElement.currentTime = Math.min(dom.audioElement.duration || 0, dom.audioElement.currentTime + 5);
   });
-
-  // Chỉnh tốc độ
   dom.btnSpeed.addEventListener('click', cycleSpeed);
 
-  // Audio sự kiện timeupdate & seeker
+  // Audio events
   dom.audioElement.addEventListener('timeupdate', onAudioTimeUpdate);
   dom.audioElement.addEventListener('loadedmetadata', onAudioMetadataLoaded);
   dom.audioElement.addEventListener('play', () => { dom.btnPlayPause.textContent = '⏸'; });
@@ -127,66 +159,203 @@ function initEvents() {
     dom.audioElement.currentTime = parseFloat(e.target.value);
   });
 
-  // Modal đồng bộ
+  // Modal mốc đồng bộ
   dom.btnOpenSyncModal.addEventListener('click', openSyncModal);
   dom.btnCloseSyncModal.addEventListener('click', () => dom.syncModal.classList.add('hidden'));
   dom.syncModal.addEventListener('click', (e) => {
     if (e.target === dom.syncModal) dom.syncModal.classList.add('hidden');
   });
 
-  // Xuất & Nhập mốc
   dom.btnExportSync.addEventListener('click', exportSyncData);
   dom.importSyncInput.addEventListener('change', importSyncData);
   dom.btnClearSync.addEventListener('click', clearAllSync);
 
-  // Thao tác vuốt màn hình (Swipe gesture) trên điện thoại để lật trang
+  // Cử chỉ vuốt tay trên điện thoại
   initTouchGestures();
 
-  // Resize màn hình tự vẽ lại kích thước PDF
+  // Resize cửa sổ
   window.addEventListener('resize', debounce(() => {
-    if (state.pdfDoc) renderPage(state.pageNum);
+    if (state.pdfDoc) renderCurrentSpread();
   }, 300));
 }
 
-// XỬ LÝ CHỌN FILE PDF
+// ==========================================
+// ĐIỀU CHỈNH CHẾ ĐỘ HIỂN THỊ (VIEW MODES)
+// ==========================================
+function setViewMode(mode) {
+  state.viewMode = mode;
+  state.zoomScale = 1.0;
+  updateZoomLabel();
+
+  dom.btnFitWidth.classList.toggle('active', mode === 'fit-width');
+  dom.btnFitHeight.classList.toggle('active', mode === 'fit-height');
+  dom.btnTwoPages.classList.toggle('active', mode === 'two-pages');
+
+  if (mode === 'two-pages') {
+    dom.canvasWrapper.classList.add('two-page-mode');
+  } else {
+    dom.canvasWrapper.classList.remove('two-page-mode');
+  }
+
+  if (state.pdfDoc) {
+    renderCurrentSpread();
+  }
+}
+
+function changeZoom(delta) {
+  const newZoom = Math.max(0.5, Math.min(3.0, state.zoomScale + delta));
+  state.zoomScale = Math.round(newZoom * 100) / 100;
+  updateZoomLabel();
+  if (state.pdfDoc) {
+    renderCurrentSpread();
+  }
+}
+
+function updateZoomLabel() {
+  dom.lblZoomLevel.textContent = `${Math.round(state.zoomScale * 100)}%`;
+}
+
+// ==========================================
+// XỬ LÝ MỞ THƯ MỤC TRUYỆN (PDF + MP3 + MỐC)
+// ==========================================
+async function handleFolderPick() {
+  // Thử dùng File System Access API trước (cho phép tự động lưu trực tiếp vào thư mục)
+  if ('showDirectoryPicker' in window) {
+    try {
+      state.dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      state.folderName = state.dirHandle.name;
+      dom.folderNameLabel.textContent = `📁 ${state.dirHandle.name}`;
+
+      let pdfFile = null;
+      let audioFile = null;
+      let syncJsonFile = null;
+
+      for await (const entry of state.dirHandle.values()) {
+        if (entry.kind === 'file') {
+          const lower = entry.name.toLowerCase();
+          if (lower.endsWith('.pdf') && !pdfFile) {
+            pdfFile = await entry.getFile();
+          } else if ((lower.endsWith('.mp3') || lower.endsWith('.m4a') || lower.endsWith('.wav')) && !audioFile) {
+            audioFile = await entry.getFile();
+          } else if (lower.endsWith('.json') && (lower.includes('sync') || lower.includes('mốc'))) {
+            syncJsonFile = await entry.getFile();
+          }
+        }
+      }
+
+      await processLoadedFolderFiles(pdfFile, audioFile, syncJsonFile);
+      updateSaveStatusBadge('🟢 Tự lưu trực tiếp vào thư mục');
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return; // Người dùng hủy chọn
+      console.log('Chuyển sang fallback input folder: ', err);
+    }
+  }
+
+  // Fallback: Sử dụng webkitdirectory
+  dom.folderInput.click();
+}
+
+async function handleFolderFilesSelected(e) {
+  const files = Array.from(e.target.files);
+  if (!files || files.length === 0) return;
+
+  const folderName = files[0].webkitRelativePath.split('/')[0] || 'Thư mục';
+  state.folderName = folderName;
+  dom.folderNameLabel.textContent = `📁 ${folderName}`;
+
+  let pdfFile = null;
+  let audioFile = null;
+  let syncJsonFile = null;
+
+  for (const file of files) {
+    const lower = file.name.toLowerCase();
+    if (lower.endsWith('.pdf') && !pdfFile) {
+      pdfFile = file;
+    } else if ((lower.endsWith('.mp3') || lower.endsWith('.m4a') || lower.endsWith('.wav')) && !audioFile) {
+      audioFile = file;
+    } else if (lower.endsWith('.json') && (lower.includes('sync') || lower.includes('mốc'))) {
+      syncJsonFile = file;
+    }
+  }
+
+  await processLoadedFolderFiles(pdfFile, audioFile, syncJsonFile);
+  updateSaveStatusBadge('💾 Tự lưu vào máy (Bộ nhớ web)');
+}
+
+async function processLoadedFolderFiles(pdfFile, audioFile, syncJsonFile) {
+  let loadedItems = [];
+
+  if (pdfFile) {
+    await loadPdfFromBlob(pdfFile);
+    loadedItems.push('PDF');
+  }
+
+  if (audioFile) {
+    loadAudioFromBlob(audioFile);
+    loadedItems.push('MP3');
+  }
+
+  if (syncJsonFile) {
+    try {
+      const text = await syncJsonFile.text();
+      state.pageTimestamps = JSON.parse(text);
+      saveSyncToStorage();
+      updatePageTimestampBadge();
+      loadedItems.push(`Mốc (${Object.keys(state.pageTimestamps).length} trang)`);
+    } catch (err) {
+      console.error('Không thể đọc file mốc json:', err);
+    }
+  }
+
+  if (loadedItems.length > 0) {
+    alert(`🎉 Đã nhận diện thành công: ${loadedItems.join(' + ')}!`);
+  } else {
+    alert('Không tìm thấy file PDF hoặc MP3 trong thư mục đã chọn!');
+  }
+}
+
+// ==========================================
+// XỬ LÝ CHỌN LẺ TỪNG FILE
+// ==========================================
 async function handlePdfFileSelect(e) {
   const file = e.target.files[0];
   if (!file) return;
+  await loadPdfFromBlob(file);
+}
 
+function handleAudioFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  loadAudioFromBlob(file);
+}
+
+async function loadPdfFromBlob(file) {
   state.pdfFileName = file.name;
   dom.pdfFileName.textContent = file.name;
   dom.pdfLoadingIndicator.classList.remove('hidden');
 
   try {
-    const fileReader = new FileReader();
-    fileReader.onload = async function() {
-      const typedarray = new Uint8Array(this.result);
-      state.pdfDoc = await pdfjsLib.getDocument(typedarray).promise;
-      state.totalPages = state.pdfDoc.numPages;
-      state.pageNum = 1;
+    const buffer = await file.arrayBuffer();
+    const typedarray = new Uint8Array(buffer);
+    state.pdfDoc = await pdfjsLib.getDocument(typedarray).promise;
+    state.totalPages = state.pdfDoc.numPages;
+    state.pageNum = 1;
 
-      dom.lblTotalPages.textContent = state.totalPages;
-      dom.emptyState.classList.add('hidden');
-      dom.canvasWrapper.classList.remove('hidden');
-      dom.pdfLoadingIndicator.classList.add('hidden');
+    dom.lblTotalPages.textContent = state.totalPages;
+    dom.emptyState.classList.add('hidden');
+    dom.canvasWrapper.classList.remove('hidden');
+    dom.pdfLoadingIndicator.classList.add('hidden');
 
-      // Tự động load dữ liệu mốc đã lưu trước đó nếu có
-      loadSyncFromStorage();
-
-      renderPage(state.pageNum);
-    };
-    fileReader.readAsArrayBuffer(file);
+    loadSyncFromStorage();
+    renderCurrentSpread();
   } catch (error) {
     alert('Không thể mở file PDF: ' + error.message);
     dom.pdfLoadingIndicator.classList.add('hidden');
   }
 }
 
-// XỬ LÝ CHỌN FILE MP3
-function handleAudioFileSelect(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
+function loadAudioFromBlob(file) {
   state.audioFileName = file.name;
   dom.audioFileName.textContent = file.name;
 
@@ -195,72 +364,129 @@ function handleAudioFileSelect(e) {
   dom.audioElement.load();
 }
 
-// VẼ TRANG PDF
-function renderPage(num) {
+// ==========================================
+// VẼ TRANG PDF (HỖ TRỢ 1 TRANG & 2 TRANG)
+// ==========================================
+async function renderCurrentSpread() {
   if (!state.pdfDoc) return;
+  if (state.pageRendering) {
+    state.pageNumPending = state.pageNum;
+    return;
+  }
   state.pageRendering = true;
 
-  state.pdfDoc.getPage(num).then(page => {
-    const canvas = dom.pdfCanvas;
-    const ctx = canvas.getContext('2d');
+  const isTwoPages = state.viewMode === 'two-pages';
+  const containerW = dom.viewerContainer.clientWidth - 32;
+  const containerH = dom.viewerContainer.clientHeight - 32;
 
-    // Tính tỉ lệ phóng to sao cho vừa khít chiều rộng màn hình thiết bị
-    const containerWidth = dom.viewerContainer.clientWidth - 28;
-    const unscaledViewport = page.getViewport({ scale: 1 });
-    const scale = Math.min(2.5, containerWidth / unscaledViewport.width);
-    const viewport = page.getViewport({ scale: Math.max(scale, 0.8) });
+  let leftPageNum = state.pageNum;
+  let rightPageNum = isTwoPages && (leftPageNum + 1 <= state.totalPages) ? leftPageNum + 1 : null;
 
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-
-    const renderContext = {
-      canvasContext: ctx,
-      viewport: viewport
-    };
-
-    const renderTask = page.render(renderContext);
-    renderTask.promise.then(() => {
-      state.pageRendering = false;
-      if (state.pageNumPending !== null) {
-        renderPage(state.pageNumPending);
-        state.pageNumPending = null;
-      }
-    });
-  });
-
-  // Cập nhật nhãn trang hiện tại
-  dom.lblCurrentPage.textContent = num;
+  // Cập nhật nhãn trang
+  if (isTwoPages && rightPageNum) {
+    dom.lblPagePrefix.textContent = 'Trang';
+    dom.lblCurrentPage.textContent = `${leftPageNum} - ${rightPageNum}`;
+  } else {
+    dom.lblPagePrefix.textContent = 'Trang';
+    dom.lblCurrentPage.textContent = `${leftPageNum}`;
+  }
   updatePageTimestampBadge();
 
-  // Nếu lật trang thủ công và bật "Lật trang tự tua audio"
+  try {
+    // 1. Tải trang bên trái
+    const pageLeft = await state.pdfDoc.getPage(leftPageNum);
+    const unscaledLeft = pageLeft.getViewport({ scale: 1 });
+
+    let pageRight = null;
+    let unscaledRight = null;
+    if (rightPageNum) {
+      pageRight = await state.pdfDoc.getPage(rightPageNum);
+      unscaledRight = pageRight.getViewport({ scale: 1 });
+    }
+
+    // 2. Tính toán Scale dựa theo chế độ xem
+    let scale = 1.0;
+    if (state.viewMode === 'fit-width') {
+      // Vừa chiều ngang (1 trang)
+      scale = (containerW / unscaledLeft.width) * state.zoomScale;
+      dom.pageRightWrapper.classList.add('hidden');
+    } else if (state.viewMode === 'fit-height') {
+      // Vừa chiều dọc (1 trang xem trọn)
+      scale = (containerH / unscaledLeft.height) * state.zoomScale;
+      dom.pageRightWrapper.classList.add('hidden');
+    } else if (isTwoPages) {
+      // 2 trang cùng lúc
+      const combinedWidth = unscaledRight ? (unscaledLeft.width + unscaledRight.width + 16) : unscaledLeft.width;
+      const maxHeight = unscaledRight ? Math.max(unscaledLeft.height, unscaledRight.height) : unscaledLeft.height;
+
+      // Tính scale sao cho vừa cả chiều ngang chia đôi và vừa chiều dọc màn hình
+      const scaleW = (containerW / combinedWidth);
+      const scaleH = (containerH / maxHeight);
+      scale = Math.min(scaleW, scaleH) * state.zoomScale;
+    }
+
+    // Render Canvas Trái
+    const viewportLeft = pageLeft.getViewport({ scale: Math.max(scale, 0.4) });
+    dom.pdfCanvasLeft.height = viewportLeft.height;
+    dom.pdfCanvasLeft.width = viewportLeft.width;
+    const ctxLeft = dom.pdfCanvasLeft.getContext('2d');
+    await pageLeft.render({ canvasContext: ctxLeft, viewport: viewportLeft }).promise;
+
+    // Render Canvas Phải (nếu có 2 trang)
+    if (isTwoPages && pageRight) {
+      dom.pageRightWrapper.classList.remove('hidden');
+      const viewportRight = pageRight.getViewport({ scale: Math.max(scale, 0.4) });
+      dom.pdfCanvasRight.height = viewportRight.height;
+      dom.pdfCanvasRight.width = viewportRight.width;
+      const ctxRight = dom.pdfCanvasRight.getContext('2d');
+      await pageRight.render({ canvasContext: ctxRight, viewport: viewportRight }).promise;
+    } else {
+      dom.pageRightWrapper.classList.add('hidden');
+    }
+
+  } catch (err) {
+    console.error('Lỗi khi render trang:', err);
+  } finally {
+    state.pageRendering = false;
+    if (state.pageNumPending !== null) {
+      const pending = state.pageNumPending;
+      state.pageNumPending = null;
+      renderCurrentSpread();
+    }
+  }
+
+  // Tự động tua audio nếu đổi trang thủ công
   if (state.autoSeekAudio && !state.isAudioDrivenChange) {
-    const targetTimestamp = state.pageTimestamps[num];
+    const targetTimestamp = state.pageTimestamps[leftPageNum];
     if (typeof targetTimestamp === 'number') {
       dom.audioElement.currentTime = targetTimestamp;
     }
   }
 }
 
-function queueRenderPage(num) {
-  if (state.pageRendering) {
-    state.pageNumPending = num;
-  } else {
-    renderPage(num);
-  }
-}
-
 // ĐỔI TRANG
 function changePage(delta) {
   if (!state.pdfDoc) return;
-  const newPage = state.pageNum + delta;
+  // Nếu ở chế độ 2 trang, mỗi lần lật 2 trang
+  const step = (state.viewMode === 'two-pages') ? 2 * delta : delta;
+  const newPage = state.pageNum + step;
+
   if (newPage >= 1 && newPage <= state.totalPages) {
     state.pageNum = newPage;
     state.isAudioDrivenChange = false;
-    queueRenderPage(state.pageNum);
+    renderCurrentSpread();
+  } else if (delta > 0 && state.pageNum < state.totalPages) {
+    state.pageNum = state.totalPages;
+    state.isAudioDrivenChange = false;
+    renderCurrentSpread();
+  } else if (delta < 0 && state.pageNum > 1) {
+    state.pageNum = 1;
+    state.isAudioDrivenChange = false;
+    renderCurrentSpread();
   }
 }
 
-// CẬP NHẬT NHÃN MỐC THỜI GIAN TRANG HIỆN TẠI
+// CẬP NHẬT BADGE MỐC THỜI GIAN
 function updatePageTimestampBadge() {
   const ts = state.pageTimestamps[state.pageNum];
   if (typeof ts === 'number') {
@@ -272,8 +498,14 @@ function updatePageTimestampBadge() {
   }
 }
 
-// GHIM MỐC THỜI GIAN HIỆN TẠI VÀO TRANG ĐANG XEM
-function pinCurrentTimeToPage() {
+function updateSaveStatusBadge(text) {
+  dom.lblSaveStatus.textContent = text;
+}
+
+// ==========================================
+// TỰ ĐỘNG LƯU MỐC VÀO THƯ MỤC CỦA PDF VÀ MP3
+// ==========================================
+async function pinCurrentTimeToPage() {
   if (!state.pdfDoc) {
     alert('Vui lòng chọn file PDF trước!');
     return;
@@ -281,10 +513,15 @@ function pinCurrentTimeToPage() {
   const currentTime = dom.audioElement.currentTime || 0;
   state.pageTimestamps[state.pageNum] = Math.round(currentTime * 10) / 10;
 
+  // 1. Tự động lưu vào LocalStorage
   saveSyncToStorage();
+
+  // 2. Tự động lưu vào thư mục nếu có quyền thư mục
+  await autoSaveToDirectoryIfPossible();
+
   updatePageTimestampBadge();
 
-  // Hiệu ứng phản hồi nhẹ
+  // Hiệu ứng phản hồi
   const originalText = dom.btnPinCurrentTime.textContent;
   dom.btnPinCurrentTime.textContent = `Đã ghim: ${formatTime(currentTime)}!`;
   dom.btnPinCurrentTime.style.backgroundColor = '#10b981';
@@ -294,7 +531,49 @@ function pinCurrentTimeToPage() {
   }, 1200);
 }
 
-// PLAY / PAUSE
+// Tự động lưu ngầm vào thư mục gốc (không cần người dùng bấm lưu lại)
+async function autoSaveToDirectoryIfPossible() {
+  if (state.dirHandle && 'createWritable' in FileSystemFileHandle.prototype) {
+    try {
+      const fileName = getSyncFileName();
+      const fileHandle = await state.dirHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(state.pageTimestamps, null, 2));
+      await writable.close();
+      updateSaveStatusBadge(`🟢 Đã lưu vào ${fileName}`);
+      return true;
+    } catch (e) {
+      console.log('Không thể tự ghi vào thư mục:', e);
+    }
+  }
+  updateSaveStatusBadge('💾 Đã lưu vào máy');
+  return false;
+}
+
+function getSyncFileName() {
+  const baseName = state.pdfFileName ? state.pdfFileName.replace(/\.[^/.]+$/, "") : "pdf_audio";
+  return `${baseName}_sync.json`;
+}
+
+// Bấm nút "Lưu mốc"
+async function saveSyncToDirectoryOrDownload() {
+  if (Object.keys(state.pageTimestamps).length === 0) {
+    alert('Chưa có mốc thời gian nào để lưu!');
+    return;
+  }
+
+  const savedDirectly = await autoSaveToDirectoryIfPossible();
+  if (savedDirectly) {
+    alert(`🎉 Đã tự động lưu file mốc [${getSyncFileName()}] trực tiếp vào thư mục truyện của bạn!`);
+  } else {
+    exportSyncData();
+    alert(`Đã tải file [${getSyncFileName()}]. Bạn hãy lưu file này vào chung thư mục chứa PDF và MP3 để lần sau app tự nhận diện nhé!`);
+  }
+}
+
+// ==========================================
+// PHÁT AUDIO & TỰ ĐỘNG CHUYỂN TRANG
+// ==========================================
 function togglePlayPause() {
   if (!dom.audioElement.src) {
     alert('Vui lòng chọn file MP3 trước!');
@@ -307,7 +586,6 @@ function togglePlayPause() {
   }
 }
 
-// THAY ĐỔI TỐC ĐỘ ĐỌC
 function cycleSpeed() {
   state.speedIndex = (state.speedIndex + 1) % state.speeds.length;
   const newSpeed = state.speeds[state.speedIndex];
@@ -315,49 +593,61 @@ function cycleSpeed() {
   dom.btnSpeed.textContent = `${newSpeed}x`;
 }
 
-// KHI AUDIO TẢI XONG THÔNG TIN
 function onAudioMetadataLoaded() {
   const duration = dom.audioElement.duration || 0;
   dom.audioSeeker.max = duration;
   dom.lblAudioDuration.textContent = formatTime(duration);
 }
 
-// KHI AUDIO ĐANG CHẠY (TIMEUPDATE)
 function onAudioTimeUpdate() {
   const curr = dom.audioElement.currentTime;
   dom.audioSeeker.value = curr;
   dom.lblAudioCurrentTime.textContent = formatTime(curr);
 
-  // TÍNH NĂNG TỰ ĐỘNG CHUYỂN TRANG THEO MỐC ÂM THANH
+  // TÍNH NĂNG TỰ ĐỘNG LẬT TRANG THEO MỐC THỜI GIAN
   if (state.autoPageTurn && state.pdfDoc && Object.keys(state.pageTimestamps).length > 0) {
-    // Tìm trang có timestamp lớn nhất nhưng vẫn <= thời điểm hiện tại
     let matchedPage = null;
     let maxTime = -1;
 
     for (const [pageStr, timestamp] of Object.entries(state.pageTimestamps)) {
-      const pageNum = parseInt(pageStr, 10);
+      const p = parseInt(pageStr, 10);
       if (curr >= timestamp && timestamp > maxTime) {
         maxTime = timestamp;
-        matchedPage = pageNum;
+        matchedPage = p;
       }
     }
 
-    if (matchedPage && matchedPage !== state.pageNum) {
-      state.isAudioDrivenChange = true;
-      state.pageNum = matchedPage;
-      queueRenderPage(matchedPage);
-      setTimeout(() => { state.isAudioDrivenChange = false; }, 300);
+    if (matchedPage) {
+      let shouldTurn = false;
+      if (state.viewMode === 'two-pages') {
+        // Trong chế độ 2 trang, nếu matchedPage không nằm trong cặp (pageNum, pageNum+1) thì chuyển
+        const inCurrentSpread = (matchedPage === state.pageNum || matchedPage === state.pageNum + 1);
+        if (!inCurrentSpread) {
+          shouldTurn = true;
+        }
+      } else {
+        if (matchedPage !== state.pageNum) {
+          shouldTurn = true;
+        }
+      }
+
+      if (shouldTurn) {
+        state.isAudioDrivenChange = true;
+        state.pageNum = matchedPage;
+        renderCurrentSpread();
+        setTimeout(() => { state.isAudioDrivenChange = false; }, 400);
+      }
     }
   }
 }
 
-// QUẢN LÝ LOCALSTORAGE (TỰ LƯU MỐC THEO TÊN FILE PDF)
+// LOCALSTORAGE
 function getStorageKey() {
-  return `pdf_sync_${state.pdfFileName || 'default'}`;
+  return `pdf_sync_${state.pdfFileName || state.folderName || 'default'}`;
 }
 
 function saveSyncToStorage() {
-  if (!state.pdfFileName) return;
+  if (!state.pdfFileName && !state.folderName) return;
   try {
     localStorage.setItem(getStorageKey(), JSON.stringify(state.pageTimestamps));
   } catch (e) {
@@ -370,15 +660,13 @@ function loadSyncFromStorage() {
     const raw = localStorage.getItem(getStorageKey());
     if (raw) {
       state.pageTimestamps = JSON.parse(raw);
-    } else {
-      state.pageTimestamps = {};
     }
   } catch (e) {
-    state.pageTimestamps = {};
+    console.error(e);
   }
 }
 
-// MODAL QUẢN LÝ MỐC ĐỒNG BỘ
+// MODAL QUẢN LÝ MỐC
 function openSyncModal() {
   renderSyncTable();
   dom.syncModal.classList.remove('hidden');
@@ -406,23 +694,23 @@ function renderSyncTable() {
   }
 }
 
-// HÀM TOÀN CỤC CHO MODAL
 window.seekAndPlayTo = function(seconds, page) {
   dom.audioElement.currentTime = seconds;
   dom.audioElement.play();
   state.pageNum = page;
-  queueRenderPage(page);
+  renderCurrentSpread();
   dom.syncModal.classList.add('hidden');
 };
 
-window.deleteSync = function(page) {
+window.deleteSync = async function(page) {
   delete state.pageTimestamps[page];
   saveSyncToStorage();
+  await autoSaveToDirectoryIfPossible();
   updatePageTimestampBadge();
   renderSyncTable();
 };
 
-window.setManualSync = function(page) {
+window.setManualSync = async function(page) {
   const currentVal = state.pageTimestamps[page] || Math.floor(dom.audioElement.currentTime || 0);
   const input = prompt(`Nhập số giây bắt đầu cho Trang ${page} (hoặc dạng MM:SS):`, formatTime(currentVal));
   if (!input) return;
@@ -439,6 +727,7 @@ window.setManualSync = function(page) {
   if (!isNaN(seconds) && seconds >= 0) {
     state.pageTimestamps[page] = seconds;
     saveSyncToStorage();
+    await autoSaveToDirectoryIfPossible();
     updatePageTimestampBadge();
     renderSyncTable();
   } else {
@@ -446,39 +735,40 @@ window.setManualSync = function(page) {
   }
 };
 
-function clearAllSync() {
+async function clearAllSync() {
   if (confirm('Bạn có chắc muốn xóa tất cả mốc đồng bộ của file này không?')) {
     state.pageTimestamps = {};
     saveSyncToStorage();
+    await autoSaveToDirectoryIfPossible();
     updatePageTimestampBadge();
     renderSyncTable();
   }
 }
 
-// XUẤT FILE JSON MỐC ĐỒNG BỘ
+// XUẤT FILE JSON
 function exportSyncData() {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.pageTimestamps, null, 2));
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
-  const baseName = state.pdfFileName ? state.pdfFileName.replace(/\.[^/.]+$/, "") : "pdf_audio";
-  downloadAnchor.setAttribute("download", `${baseName}_sync.json`);
+  downloadAnchor.setAttribute("download", getSyncFileName());
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
 }
 
-// NHẬP FILE JSON MỐC ĐỒNG BỘ
+// NHẬP FILE JSON
 function importSyncData(e) {
   const file = e.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = function(event) {
+  reader.onload = async function(event) {
     try {
       const imported = JSON.parse(event.target.result);
       if (typeof imported === 'object') {
         state.pageTimestamps = imported;
         saveSyncToStorage();
+        await autoSaveToDirectoryIfPossible();
         updatePageTimestampBadge();
         renderSyncTable();
         alert('Nhập mốc thời gian thành công!');
@@ -490,7 +780,7 @@ function importSyncData(e) {
   reader.readAsText(file);
 }
 
-// VUỐT TRÊN MÀN HÌNH ĐIỆN THOẠI (SWIPE GESTURE)
+// VUỐT TRÊN MÀN HÌNH ĐIỆN THOẠI
 function initTouchGestures() {
   let touchStartX = 0;
   let touchEndX = 0;
@@ -501,34 +791,22 @@ function initTouchGestures() {
 
   dom.viewerContainer.addEventListener('touchend', (e) => {
     touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-  }, { passive: true });
-
-  function handleSwipe() {
-    const threshold = 60; // Ngưỡng vuốt
+    const threshold = 60;
     if (touchEndX < touchStartX - threshold) {
-      // Vuốt sang trái -> Trang sau
       changePage(1);
     }
     if (touchEndX > touchStartX + threshold) {
-      // Vuốt sang phải -> Trang trước
       changePage(-1);
     }
-  }
+  }, { passive: true });
 }
 
-// TIỆN ÍCH DEBOUNCE
 function debounce(func, wait) {
   let timeout;
   return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
     clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
+    timeout = setTimeout(() => func(...args), wait);
   };
 }
 
-// KHỞI CHẠY ỨNG DỤNG
 document.addEventListener('DOMContentLoaded', initEvents);

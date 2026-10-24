@@ -22,43 +22,73 @@
     <div class="header-left">
       <h1 class="app-title">📖 PDF Audio Sync</h1>
     </div>
+
+    <!-- VIEW MODE CONTROLS (Thanh điều chỉnh hiển thị PDF) -->
+    <div class="view-controls-bar">
+      <button id="btnFitWidth" class="view-btn active" title="Vừa chiều ngang màn hình (cuộn dọc)">
+        ↔ <span class="hide-mobile">Vừa ngang</span>
+      </button>
+      <button id="btnFitHeight" class="view-btn" title="Vừa chiều dọc màn hình (xem trọn trang)">
+        ↕ <span class="hide-mobile">Vừa dọc</span>
+      </button>
+      <button id="btnTwoPages" class="view-btn" title="Hiển thị 2 trang cùng lúc (chế độ sách)">
+        📖 <span class="hide-mobile">2 Trang</span>
+      </button>
+      
+      <div class="zoom-group">
+        <button id="btnZoomOut" class="view-btn-mini" title="Thu nhỏ">➖</button>
+        <span id="lblZoomLevel" class="zoom-label">100%</span>
+        <button id="btnZoomIn" class="view-btn-mini" title="Phóng to">➕</button>
+      </div>
+    </div>
+
     <div class="header-right">
       <button id="btnOpenSyncModal" class="icon-btn" title="Quản lý mốc đồng bộ thời gian">
-        ⚙️ <span class="hide-mobile">Mốc khớp trang</span>
+        ⚙️ <span class="hide-mobile">Mốc khớp</span>
       </button>
-      <button id="btnToggleSettings" class="icon-btn" title="Cài đặt">
+      <button id="btnToggleSettings" class="icon-btn" title="Chọn file / thư mục">
         📂 <span class="hide-mobile">Chọn file</span>
       </button>
     </div>
   </header>
 
-  <!-- FILE PICKER BAR (DRAWER OR TOP BANNER) -->
+  <!-- FILE & FOLDER PICKER BAR -->
   <section id="filePickerSection" class="file-picker-section">
     <div class="file-picker-card">
+      <!-- 1. MỞ CẢ THƯ MỤC TRUYỆN (Khuyên dùng để tự động lưu mốc vào chung thư mục) -->
+      <div class="file-input-group folder-group">
+        <button id="btnPickFolder" class="btn-highlight">
+          📁 Mở thư mục truyện (Tự động nhận PDF + MP3 + Mốc)
+        </button>
+        <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
+        <span id="folderNameLabel" class="file-name-label">Chưa chọn thư mục</span>
+      </div>
+
+      <!-- Hoặc chọn lẻ từng file -->
       <div class="file-input-group">
         <label for="pdfFileInput" class="btn-primary">
-          📄 Chọn file PDF truyện
+          📄 Chọn PDF
         </label>
         <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none;">
-        <span id="pdfFileName" class="file-name-label">Chưa chọn PDF</span>
+        <span id="pdfFileName" class="file-name-label">Chưa chọn</span>
       </div>
 
       <div class="file-input-group">
         <label for="audioFileInput" class="btn-success">
-          🎵 Chọn file MP3 đọc truyện
+          🎵 Chọn MP3
         </label>
         <input type="file" id="audioFileInput" accept="audio/*" style="display:none;">
-        <span id="audioFileName" class="file-name-label">Chưa chọn MP3</span>
+        <span id="audioFileName" class="file-name-label">Chưa chọn</span>
       </div>
 
       <div class="quick-options">
-        <label class="toggle-label">
+        <label class="toggle-label" title="Tự động lật trang khi audio đọc tới mốc thời gian">
           <input type="checkbox" id="chkAutoPageTurn" checked>
-          <span>Tự lật trang theo audio</span>
+          <span>Tự lật theo tiếng</span>
         </label>
-        <label class="toggle-label">
+        <label class="toggle-label" title="Khi bạn bấm lật trang thì audio tự động nhảy đến đúng đoạn của trang đó">
           <input type="checkbox" id="chkAutoSeekAudio" checked>
-          <span>Lật trang tự tua audio</span>
+          <span>Lật trang tự tua</span>
         </label>
       </div>
     </div>
@@ -74,18 +104,27 @@
     <!-- Empty State Prompt -->
     <div id="emptyState" class="empty-state">
       <div class="empty-icon">📚</div>
-      <h2>Chào mừng bạn!</h2>
-      <p>Vui lòng bấm nút <b>"Chọn file PDF"</b> và <b>"Chọn file MP3"</b> ở trên để bắt đầu đọc và nghe.</p>
+      <h2>Trình Đọc PDF & Khớp Audio Thông Minh</h2>
+      <p>Bấm nút <b>"📁 Mở thư mục truyện"</b> để tự động tải PDF, MP3 và file mốc thời gian cùng lúc!</p>
       <div class="feature-tags">
-        <span>✨ Tự động chuyển trang</span>
-        <span>⏱️ Gán mốc thời gian 1 chạm</span>
-        <span>💾 Tự lưu vào máy</span>
+        <span>↔ Vừa ngang</span>
+        <span>↕ Vừa dọc</span>
+        <span>📖 2 Trang cùng lúc</span>
+        <span>💾 Tự lưu mốc vào thư mục</span>
       </div>
     </div>
 
-    <!-- PDF Canvas Container -->
+    <!-- PDF Canvas Container (Hỗ trợ 1 hoặc 2 trang song song) -->
     <div id="canvasWrapper" class="canvas-wrapper hidden">
-      <canvas id="pdfCanvas"></canvas>
+      <!-- Trang Trái (hoặc trang duy nhất khi ở chế độ 1 trang) -->
+      <div class="canvas-page" id="pageLeftWrapper">
+        <canvas id="pdfCanvasLeft"></canvas>
+      </div>
+
+      <!-- Trang Phải (hiển thị khi ở chế độ 2 trang) -->
+      <div class="canvas-page hidden" id="pageRightWrapper">
+        <canvas id="pdfCanvasRight"></canvas>
+      </div>
     </div>
   </main>
 
@@ -94,13 +133,21 @@
     <!-- Mini Sync Banner -->
     <div class="sync-banner">
       <div class="sync-info">
-        <span class="page-badge">Trang <b id="lblCurrentPage">0</b> / <span id="lblTotalPages">0</span></span>
+        <span class="page-badge"><span id="lblPagePrefix">Trang</span> <b id="lblCurrentPage">0</b> / <span id="lblTotalPages">0</span></span>
         <span id="lblPageTimestamp" class="page-time-badge">Mốc: Chưa gán</span>
+        <span id="lblSaveStatus" class="save-status-badge">💾 Sẵn sàng</span>
       </div>
-      <!-- Nút gán mốc 1 chạm -->
-      <button id="btnPinCurrentTime" class="btn-pin" title="Gán giây hiện tại cho trang này">
-        📍 Ghim mốc giây này cho trang hiện tại
-      </button>
+      
+      <div class="sync-actions-mini">
+        <!-- Nút gán mốc 1 chạm -->
+        <button id="btnPinCurrentTime" class="btn-pin" title="Gán giây hiện tại cho trang này">
+          📍 Ghim mốc giây này cho trang
+        </button>
+        <!-- Nút lưu mốc thủ công nếu cần -->
+        <button id="btnSaveToFolder" class="btn-save-mini" title="Lưu ngay file mốc vào thư mục hoặc tải về máy">
+          💾 Lưu mốc
+        </button>
+      </div>
     </div>
 
     <!-- Audio Time & Scrubber -->
@@ -146,7 +193,7 @@
     <audio id="audioElement" preload="metadata"></audio>
   </footer>
 
-  <!-- SYNC MANAGEMENT MODAL (DANH SÁCH MỐC THỜI GIAN KHỚP TRANG) -->
+  <!-- SYNC MANAGEMENT MODAL -->
   <div id="syncModal" class="modal-overlay hidden">
     <div class="modal-content">
       <div class="modal-header">
@@ -156,7 +203,7 @@
 
       <div class="modal-body">
         <p class="modal-desc">
-          Khi audio chạy đến số giây này, truyện sẽ tự động chuyển sang trang tương ứng:
+          Khi audio chạy đến số giây này, truyện sẽ tự động chuyển sang trang tương ứng. Mốc thời gian được <b>tự động lưu vào thư mục truyện</b> và bộ nhớ máy.
         </p>
 
         <div class="sync-actions-row">
