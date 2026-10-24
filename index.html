@@ -42,11 +42,15 @@
     </div>
 
     <div class="header-right">
+      <!-- NÚT MỞ TỪ LINK ONLINE / GOOGLE DRIVE -->
+      <button id="btnOpenOnlineModal" class="icon-btn online-btn" title="Mở trực tiếp từ link Google Drive / Online">
+        🔗 <span class="hide-mobile">Link Google Drive</span>
+      </button>
       <button id="btnOpenSyncModal" class="icon-btn" title="Quản lý mốc đồng bộ thời gian">
         ⚙️ <span class="hide-mobile">Mốc khớp</span>
       </button>
-      <button id="btnToggleSettings" class="icon-btn" title="Chọn file / thư mục">
-        📂 <span class="hide-mobile">Chọn file</span>
+      <button id="btnToggleSettings" class="icon-btn" title="Chọn file / thư mục máy">
+        📂 <span class="hide-mobile">File máy</span>
       </button>
     </div>
   </header>
@@ -54,21 +58,23 @@
   <!-- FILE & FOLDER PICKER BAR -->
   <section id="filePickerSection" class="file-picker-section">
     <div class="file-picker-card">
-      <!-- 1. CHỌN CẢ PDF & MP3 CÙNG LÚC (TỰ ĐỘNG KHỚP CẶP) -->
       <div class="file-input-group main-picker-group">
-        <label for="combinedFileInput" class="btn-combined" title="Quét chọn cả file PDF và MP3 cùng lúc, hệ thống sẽ tự động ghép đôi!">
-          ⚡ Chọn cả PDF & MP3 cùng lúc (Tự động khớp)
+        <label for="combinedFileInput" class="btn-combined" title="Quét chọn cả file PDF và MP3 cùng lúc từ máy">
+          ⚡ Chọn cả PDF & MP3 trên máy (Tự khớp)
         </label>
         <input type="file" id="combinedFileInput" accept=".pdf,audio/*,.json" multiple style="display:none;">
       </div>
 
-      <!-- 2. MỞ THƯ MỤC TRUYỆN -->
       <div class="file-input-group folder-group">
-        <button id="btnPickFolder" class="btn-highlight" title="Chọn thư mục chứa cả PDF và MP3">
-          📁 Mở cả thư mục
+        <button id="btnPickFolder" class="btn-highlight" title="Chọn thư mục chứa cả PDF và MP3 trên máy">
+          📁 Mở thư mục máy
         </button>
         <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
       </div>
+
+      <button id="btnBannerOnlineLink" class="btn-banner-link" title="Dán link Google Drive">
+        🔗 Nhập link Google Drive
+      </button>
 
       <!-- Tên các file đang nạp -->
       <div class="active-files-indicator">
@@ -89,7 +95,7 @@
     </div>
   </section>
 
-  <!-- MAIN READING CANVAS AREA (CÓ HỖ TRỢ KÉO THẢ DRAG & DROP) -->
+  <!-- MAIN READING CANVAS AREA -->
   <main class="viewer-container" id="viewerContainer">
     <!-- Overlay khi kéo thả file vào -->
     <div id="dropOverlay" class="drop-overlay hidden">
@@ -102,19 +108,27 @@
 
     <div id="pdfLoadingIndicator" class="loading-spinner hidden">
       <div class="spinner"></div>
-      <p>Đang tải trang sách...</p>
+      <p id="lblLoadingText">Đang tải tài liệu...</p>
     </div>
 
     <!-- Empty State Prompt -->
     <div id="emptyState" class="empty-state">
       <div class="empty-icon">📚</div>
-      <h2>Trình Đọc PDF & Khớp Audio Tự Động</h2>
-      <p>Bấm nút <b>"⚡ Chọn cả PDF & MP3 cùng lúc"</b> hoặc kéo thả cả 2 file vào đây để tự động mở và ghép đôi!</p>
+      <h2>Trình Đọc PDF & Khớp Audio Thông Minh</h2>
+      <p>Bạn có thể mở file trực tiếp từ <b>Google Drive</b> hoặc chọn file trên máy để vừa xem vừa nghe:</p>
+      <div class="empty-actions">
+        <button id="btnEmptyDrive" class="btn-combined-large">
+          🔗 Mở truyện từ link Google Drive
+        </button>
+        <label for="combinedFileInput" class="btn-secondary-large">
+          ⚡ Chọn file từ bộ nhớ máy
+        </label>
+      </div>
       <div class="feature-tags">
+        <span>☁️ Nghe trực tuyến Google Drive</span>
         <span>⚡ Tự động ghép đôi PDF + MP3</span>
-        <span>💾 Nhớ Audio cho lần sau</span>
-        <span>↔ Vừa ngang</span>
-        <span>📖 2 Trang</span>
+        <span>📖 2 Trang cùng lúc</span>
+        <span>💾 Tự lưu mốc vào máy</span>
       </div>
     </div>
 
@@ -178,6 +192,49 @@
     <audio id="audioElement" preload="metadata"></audio>
   </footer>
 
+  <!-- MODAL: NHẬP LINK GOOGLE DRIVE / LINK ONLINE -->
+  <div id="onlineLinkModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🔗 Mở từ link Google Drive / Online</h3>
+        <button id="btnCloseOnlineModal" class="close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="guide-box">
+          <p><b>💡 Hướng dẫn lấy link trên Google Drive:</b></p>
+          <ol>
+            <li>Nhấp chuột phải vào file (PDF hoặc MP3) trên Drive > chọn <b>Chia sẻ (Share)</b>.</li>
+            <li>Đổi quyền truy cập thành: <b>"Bất kỳ ai có đường liên kết (Anyone with link)"</b>.</li>
+            <li>Bấm <b>Sao chép đường liên kết (Copy link)</b> rồi dán vào ô bên dưới:</li>
+          </ol>
+        </div>
+
+        <div class="form-group">
+          <label for="txtOnlinePdf">📄 Link file PDF Google Drive:</label>
+          <input type="text" id="txtOnlinePdf" class="text-input" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
+        </div>
+
+        <div class="form-group">
+          <label for="txtOnlineAudio">🎵 Link file MP3 Google Drive:</label>
+          <input type="text" id="txtOnlineAudio" class="text-input" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
+        </div>
+
+        <div class="modal-actions-right">
+          <button id="btnLoadOnlineLinks" class="btn-primary-large">
+            🚀 Tải & Mở truyện trực tuyến
+          </button>
+        </div>
+
+        <!-- Lịch sử link đã mở -->
+        <div id="onlineHistorySection" class="history-section hidden">
+          <h4>🕒 Link đã mở gần đây:</h4>
+          <div id="onlineHistoryList" class="history-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- SYNC MANAGEMENT MODAL -->
   <div id="syncModal" class="modal-overlay hidden">
     <div class="modal-content">
@@ -217,7 +274,7 @@
     </div>
   </div>
 
-  <!-- TOAST THÔNG BÁO TỰ ĐỘNG -->
+  <!-- TOAST THÔNG BÁO -->
   <div id="toastMessage" class="toast-message hidden"></div>
 
   <script src="app.js"></script>
