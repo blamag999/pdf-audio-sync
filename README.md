@@ -1,58 +1,70 @@
-# Read Aloud - Công cụ đọc sách kèm audio cho người học tiếng Anh
+# Read Along — Sách điện tử kết hợp lời đọc
 
-Read Aloud là công cụ đọc sách kèm audio dành cho người học tiếng Anh. Ứng dụng hiển thị sách PDF và phát tệp MP3 tương ứng, hỗ trợ đồng bộ âm thanh theo từng trang để người học theo dõi nội dung thuận tiện. Ứng dụng chạy trên trình duyệt máy tính và thiết bị di động.
+**Read Along** là ứng dụng kết hợp sách điện tử với lời đọc bằng âm thanh, giúp trẻ em và người học vừa nghe lời đọc vừa theo dõi nội dung văn bản tương ứng trên từng trang.
+
+Ứng dụng hiển thị sách từ tệp PDF và phát tệp MP3 hoặc định dạng âm thanh được trình duyệt hỗ trợ. Các mốc thời gian cho phép liên kết thời điểm trong bản ghi âm với từng trang sách. Read Along chạy trên trình duyệt; PDF và âm thanh được người dùng mở từ thiết bị của mình.
+
+## Read Along hoạt động như thế nào?
+
+1. **Mở sách:** chọn một tệp PDF hoặc một thư mục chứa nhiều tập truyện.
+2. **Ghép lời đọc:** chọn tệp MP3/audio tương ứng với nội dung sách.
+3. **Nghe và theo dõi:** phát âm thanh trong khi đọc nội dung trên trang PDF.
+4. **Đồng bộ trang với âm thanh:** gán mốc thời gian cho các trang. Khi âm thanh đến mốc đã thiết lập, ứng dụng có thể tự chuyển trang, dừng chờ người đọc lật trang hoặc phát liên tục tùy chế độ.
+5. **Điều khiển việc đọc:** tua âm thanh, thay đổi tốc độ, chuyển đến trang bất kỳ hoặc nghe lại trang hiện tại. Khi bật **Lật trang tự tua**, chuyển trang sẽ đưa âm thanh đến mốc của trang đó nếu mốc đã được thiết lập.
+6. **Lưu mốc đồng bộ:** tải mốc thời gian thành tệp JSON hoặc chủ động đồng bộ lên GitHub. PDF và tệp âm thanh không được tải lên GitHub bởi chức năng đồng bộ mốc.
 
 ## Bắt đầu nhanh
 
-1. Mở [Read Aloud trên GitHub Pages](https://blamag999.github.io/pdf-audio-sync/).
+1. Mở [Read Along trên GitHub Pages](https://blamag999.github.io/pdf-audio-sync/).
 2. Nhấn **Bắt đầu**.
 3. Chọn một trong hai cách:
-   - **Chọn thư mục:** chọn thư mục có các tệp PDF/MP3. Ứng dụng quét và hiển thị danh sách tập để bạn chọn nghe.
+   - **Chọn thư mục:** chọn thư mục có các tệp PDF/audio. Ứng dụng quét và hiển thị danh sách tập để bạn chọn.
    - **Chọn PDF:** chọn tài liệu PDF, sau đó nhấn **Chọn MP3** để nạp tệp âm thanh tương ứng.
-4. Nhấn **Play** để bắt đầu nghe. Việc nạp tệp không tự động phát âm thanh.
-5. Dùng các nút chuyển trang, tua lùi/tới và đọc lại trang để điều khiển quá trình đọc.
+4. Nhấn **Phát** để bắt đầu nghe. Việc nạp tệp không tự động phát âm thanh.
+5. Nếu muốn đồng bộ trang, mở **Mốc thời gian**, phát đến thời điểm bắt đầu của trang rồi nhấn **Ghim mốc giây này cho trang**. Lặp lại cho các trang cần đồng bộ.
 
 ## Hướng dẫn sử dụng
 
 ### Chọn và mở nội dung
-- **Bắt đầu → Chọn thư mục:** phù hợp khi có nhiều tập truyện. Chọn thư mục chứa các tệp PDF và MP3; sau khi quét, mở **Danh sách tập** để chọn tập.
-- **Bắt đầu → Chọn PDF:** phù hợp khi chỉ đọc một tài liệu. Sau khi chọn PDF, cần chọn thêm file MP3 tương ứng bằng nút **Chọn MP3**.
-- Bạn cũng có thể kéo thả tệp PDF và MP3 vào vùng đọc nếu trình duyệt và thiết bị hỗ trợ thao tác này.
+- **Bắt đầu → Chọn thư mục:** phù hợp khi có nhiều tập truyện. Chọn thư mục chứa các tệp PDF và audio; sau khi quét, mở **Danh sách tập** để chọn tập.
+- **Bắt đầu → Chọn PDF:** phù hợp khi chỉ đọc một tài liệu. Sau khi chọn PDF, chọn thêm tệp âm thanh tương ứng bằng nút **Chọn MP3**.
+- Có thể kéo thả tệp vào vùng đọc nếu trình duyệt và thiết bị hỗ trợ thao tác này.
 
 ### Điều khiển đọc
-- **Play/Dừng:** phát hoặc tạm dừng âm thanh.
+- **Phát/Tạm dừng:** phát hoặc tạm dừng âm thanh.
 - **Trang trước/Trang sau:** chuyển trang PDF.
 - **Tua lùi/Tua tới:** di chuyển âm thanh 5 giây.
-- **Đọc lại trang:** phát lại từ mốc thời gian của trang hiện tại (khi có mốc phù hợp).
-- **Tốc độ phát:** chọn tốc độ phù hợp.
+- **Đọc lại trang:** phát lại từ mốc thời gian của trang hiện tại khi đã có mốc phù hợp.
+- **Tốc độ phát:** chọn tốc độ từ 0,5× đến 3×.
 - **Vừa dọc / 2 Trang:** thay đổi cách hiển thị PDF; dùng nút phóng to/thu nhỏ để điều chỉnh kích thước.
+- **Đến trang:** nhập số trang để chuyển thẳng đến trang mong muốn.
 
 ### Chế độ đọc và đồng bộ mốc
-- **Tự động lật trang (theo mốc thời gian):** tự chuyển PDF sang trang kế tiếp khi âm thanh tới mốc đã đặt.
-- **Tự lật trang (dừng chờ lật trang):** dừng âm thanh tại mốc trang kế tiếp để bạn tự lật trang; nếu không có mốc hợp lệ cho trang kế tiếp, âm thanh tiếp tục chạy.
+- **Tự động lật trang (theo mốc thời gian):** tự chuyển PDF theo các mốc trang đã thiết lập khi âm thanh phát đến thời điểm tương ứng.
+- **Dừng chờ lật trang:** dừng âm thanh tại mốc trang kế tiếp để người đọc tự lật trang rồi tiếp tục.
 - **Đọc liên tục:** phát âm thanh mà không tự dừng hoặc tự chuyển trang theo mốc.
-- **Lật trang tự tua:** khi bật, thao tác lật trang sẽ tua âm thanh đến mốc của trang đó nếu có.
-- **Ghim mốc giây này cho trang:** gán thời điểm âm thanh hiện tại cho trang đang mở. Hãy thiết lập mốc cho các trang cần đồng bộ.
+- **Lật trang tự tua:** khi bật, thao tác chuyển trang sẽ tua âm thanh đến mốc của trang đó nếu có.
+- **Ghim mốc giây này cho trang:** gán thời điểm âm thanh hiện tại cho trang đang mở. Các mốc cần được thiết lập trước để đồng bộ chính xác.
 
 ### Lưu và đồng bộ dữ liệu
 - Mốc thời gian được lưu cục bộ trong trình duyệt theo từng cuốn truyện.
-- Dùng **Lưu mốc** để lưu/xuất tệp mốc JSON về máy.
-- Trong **Mốc thời gian**, bạn có thể nhập hoặc xuất JSON, xóa mốc, hoặc đồng bộ mốc lên GitHub.
-- Đồng bộ GitHub chỉ tải lên dữ liệu JSON mốc; PDF và MP3 không được tải lên.
+- Dùng **Lưu mốc** để lưu hoặc tải tệp mốc JSON về máy.
+- Trong **Mốc thời gian**, có thể nhập JSON, xuất JSON, xóa mốc hoặc đồng bộ mốc lên GitHub.
+- Chức năng đồng bộ GitHub chỉ lưu dữ liệu JSON về mốc thời gian; PDF và audio không được tải lên.
 - Để ghi dữ liệu vào repository, cần GitHub Personal Access Token có quyền **Contents: Read and write**. Token chỉ được giữ trong phiên trình duyệt hiện tại; không đưa token vào mã nguồn hoặc chia sẻ token.
 
 ### Menu
-Nút **Menu** ở góc trên phải dùng để ẩn/hiện khu vực chọn tệp, tên tệp, số mốc, chế độ đọc, tùy chọn tự tua và thanh mốc trang phía dưới.
+Nút **Menu** ở góc trên phải dùng để ẩn/hiện khu vực chọn tệp và thanh mốc trang phía dưới.
 
 ## Lưu ý
-- Trình duyệt cần hỗ trợ chọn thư mục để sử dụng chức năng quét thư mục. Nếu không có, hãy chọn từng PDF và MP3.
-- PDF và MP3 vẫn nằm trên thiết bị của bạn khi sử dụng chức năng mở tệp cục bộ.
-- Nếu giao diện chưa cập nhật sau khi triển khai, hãy tải lại trang bằng **Ctrl + F5** hoặc đóng/mở lại ứng dụng.
+- Trình duyệt cần hỗ trợ chọn thư mục để sử dụng chức năng quét thư mục. Nếu không, hãy chọn PDF và audio riêng.
+- PDF và audio được mở từ thiết bị của người dùng; chức năng đồng bộ mốc không tải các tệp này lên GitHub.
+- Nếu giao diện chưa cập nhật sau khi triển khai, hãy tải lại trang bằng **Ctrl + F5** hoặc đóng rồi mở lại ứng dụng.
 
 ## Công nghệ
-- PDF.js để hiển thị tài liệu PDF.
-- IndexedDB/LocalStorage của trình duyệt để lưu dữ liệu cục bộ.
-- GitHub Contents API để đồng bộ tệp JSON mốc thời gian khi người dùng chủ động yêu cầu.
+- **PDF.js:** hiển thị tài liệu PDF.
+- **IndexedDB và bộ lưu trữ của trình duyệt:** lưu dữ liệu cục bộ của thư viện.
+- **GitHub Contents API:** đồng bộ tệp JSON mốc thời gian khi người dùng chủ động yêu cầu.
 
 ## Repository
-https://github.com/blamag999/pdf-audio-sync
+[blamag999/pdf-audio-sync](https://github.com/blamag999/pdf-audio-sync)
