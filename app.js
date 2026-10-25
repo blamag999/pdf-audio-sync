@@ -36,7 +36,8 @@ const state = {
 
   // MULTI-AUDIO STATE
   currentAudioIndex: 0,   // Phần âm thanh đang phát trong currentStoryAudios
-  currentStoryAudios: []  // Danh sách các phần âm thanh của truyện đang mở
+  currentStoryAudios: [], // Danh sách các phần âm thanh của truyện đang mở
+  pdfSelectionInProgress: false
 };
 
 // =======================================================
@@ -770,16 +771,30 @@ async function handlePdfFileSelect(e) {
 
   const key = getBookUniqueKey(file.name);
   state.currentBookKey = key;
+  state.pdfSelectionInProgress = true;
+  state.currentStoryAudios = [];
+  state.currentAudioIndex = 0;
+  dom.audioElement.pause();
+  dom.audioElement.removeAttribute('src');
+  dom.audioElement.load();
+  dom.audioFileName.textContent = '🎵 Chưa có MP3';
+  dom.audioFileName.classList.add('empty');
+  updateAudioPartUI();
+
   // Mở hộp thoại MP3 ngay trong sự kiện chọn PDF để trình duyệt cho phép.
   dom.audioFileInput.click();
 
-  await loadPdfFromBlob(file, true);
-  saveBookToLibrary({
-    id: key,
-    pdfName: file.name,
-    pdfBlob: file
-  });
-  showToast('Đã mở PDF. Hãy chọn file MP3 tương ứng trong hộp thoại.');
+  try {
+    await loadPdfFromBlob(file, true);
+    saveBookToLibrary({
+      id: key,
+      pdfName: file.name,
+      pdfBlob: file
+    });
+  } finally {
+    state.pdfSelectionInProgress = false;
+  }
+  showToast('Đã mở PDF. Chọn file MP3 tương ứng để bắt đầu nghe.');
 }
 
 async function handleAudioFileSelect(e) {
@@ -824,7 +839,7 @@ async function handleAudioFileSelect(e) {
 
   // Tìm kiếm PDF tương ứng nếu chưa mở PDF
   const key = getBookUniqueKey(files[0].name);
-  if (!state.pdfDoc) {
+  if (!state.pdfDoc && !state.pdfSelectionInProgress) {
     const saved = await getBookFromLibrary(key);
     if (saved && saved.pdfBlob) {
       state.currentBookKey = key;
