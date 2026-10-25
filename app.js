@@ -241,7 +241,10 @@ function updateSyncCountBadge() {
 // GitHub stores only marker JSON; PDF and audio remain local.
 const GITHUB_OWNER='blamag999',GITHUB_REPO='pdf-audio-sync',GITHUB_BRANCH='main',GITHUB_SYNC_DIR='sync_data';
 const GITHUB_TOKEN_SESSION_KEY='pdf_audio_sync_github_token';let githubSyncTimer=null;
-function getSyncStem(){const n=state.pdfFileName||state.currentBookKey||'truyen';return n.replace(/\\.[^/.]+$/,'').replace(/[\\\\/:*?"<>|]/g,'_').trim()||'truyen';}
+function getSyncStem(){
+  const n = state.pdfFileName || state.currentBookKey || 'truyen';
+  return n.replace(/\.[^/.]+$/, '').replace(/[\\/:*?"<>|]/g, '_').trim() || 'truyen';
+}
 function getCloudSyncPath(){return GITHUB_SYNC_DIR+'/'+getSyncStem()+'.json';}
 function getGithubToken(){return(sessionStorage.getItem(GITHUB_TOKEN_SESSION_KEY)||'').trim();}
 function encodeBase64Utf8(v){const b=new TextEncoder().encode(v);let x='';for(let i=0;i<b.length;i+=0x8000)x+=String.fromCharCode(...b.subarray(i,i+0x8000));return btoa(x);}
@@ -540,8 +543,6 @@ async function loadStoryFromPlaylist(story, audioPartIndex) {
     if (story.pdf) {
       if (story.pdf.blob) {
         pdfLoaded = await loadPdfFromBlob(story.pdf.blob, false);
-      } else if (story.pdf.url) {
-        pdfLoaded = false;
       }
     }
 
