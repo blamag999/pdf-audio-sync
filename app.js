@@ -152,7 +152,6 @@ const dom = {
   btnNode1FolderOnline: document.getElementById('btnNode1FolderOnline'),
   btnToggleSettings: document.getElementById('btnToggleSettings'),
   btnChooseAudio: document.getElementById('btnChooseAudio'),
-  btnDirectPdfPicker: document.getElementById('btnDirectPdfPicker'),
   folderInput: document.getElementById('folderInput'),
   pdfFileInput: document.getElementById('pdfFileInput'),
   audioFileInput: document.getElementById('audioFileInput'),
@@ -169,8 +168,6 @@ const dom = {
 
   filePickerSection: document.getElementById('filePickerSection'),
 
-  cardGuideFolder: document.getElementById('cardGuideFolder'),
-  cardGuidePdf: document.getElementById('cardGuidePdf'),
 
   viewerContainer: document.getElementById('viewerContainer'),
   dropOverlay: document.getElementById('dropOverlay'),
@@ -703,8 +700,6 @@ function initEvents() {
   });
   dom.pdfFileInput.addEventListener('change', handlePdfFileSelect);
   dom.audioFileInput.addEventListener('change', handleAudioFileSelect);
-  dom.cardGuideFolder.addEventListener('click', () => dom.btnNode1FolderOnline.click());
-  dom.cardGuidePdf.addEventListener('click', () => dom.pdfFileInput.click());
 
   dom.btnFitHeight.addEventListener('click', () => setViewMode('fit-height'));
   dom.btnTwoPages.addEventListener('click', () => setViewMode('two-pages'));
