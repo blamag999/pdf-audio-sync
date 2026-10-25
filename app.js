@@ -150,6 +150,8 @@ const dom = {
   txtPlaylistSearch: document.getElementById('txtPlaylistSearch'),
   playlistItemsList: document.getElementById('playlistItemsList'),
   playlistLoading: document.getElementById('playlistLoading'),
+  btnExportR2Catalog: document.getElementById('btnExportR2Catalog'),
+  r2PublicBaseInput: document.getElementById('r2PublicBaseInput'),
 
   btnNode1FolderOnline: document.getElementById('btnNode1FolderOnline'),
   btnToggleSettings: document.getElementById('btnToggleSettings'),
@@ -162,6 +164,7 @@ const dom = {
   btnCloseNode1Modal: document.getElementById('btnCloseNode1Modal'),
   btnTriggerFolderPicker: document.getElementById('btnTriggerFolderPicker'),
   btnTriggerPdfPicker: document.getElementById('btnTriggerPdfPicker'),
+  btnLoadR2Catalog: document.getElementById('btnLoadR2Catalog'),
 
   pdfFileName: document.getElementById('pdfFileName'),
   audioFileName: document.getElementById('audioFileName'),
@@ -426,7 +429,7 @@ async function loadCloudSyncForBook(){
 // =======================================================
 // RESET VÀ NẠP MỐC CHUẨN XÁC THEO TỪNG CUỐN (FIX TRIỆT ĐỂ LỖI DỮ LIỆU LẠ)
 // =======================================================
-async function resetAndLoadSyncForBook(bookKey, attachedJsonBlob) {
+async function resetAndLoadSyncForBook(bookKey, attachedJsonBlob, remoteSyncUrl = '') {
   // 1. Luôn xóa sạch toàn bộ mốc của cuốn trước đó khỏi RAM
   state.pageTimestamps = {};
   state.currentBookKey = bookKey;
@@ -461,6 +464,30 @@ async function resetAndLoadSyncForBook(bookKey, attachedJsonBlob) {
         return;
       }
     } catch (e) {}
+  }
+
+  // 2a. Ưu tiên JSON đồng bộ công khai trên R2; nếu GitHub có bản mới hơn thì dùng bản GitHub.
+  if (remoteSyncUrl) {
+    try {
+      const response = await fetch(remoteSyncUrl, { cache: 'no-store' });
+      if (response.ok) {
+        const parsed = await response.json();
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          state.pageTimestamps = parsed;
+          saveSyncToStorage();
+          updatePageTimestampBadge();
+          updateSyncCountBadge();
+          updateSaveStatusBadge('☁️ Đã nạp mốc từ Cloudflare R2');
+          if (await loadCloudSyncForBook()) {
+            updateSaveStatusBadge('☁️ Đã nạp mốc mới nhất từ GitHub');
+          }
+          return;
+        }
+      }
+      console.warn('Không nạp được JSON mốc từ R2:', response.status);
+    } catch (error) {
+      console.warn('Không thể nạp JSON mốc từ R2 (kiểm tra URL/CORS):', error);
+    }
   }
 
   // 2b. TU DONG TIM JSON SYNC TRONG THU MUC (dirHandle) NEU CHUA CO BLOB
@@ -500,6 +527,160 @@ async function resetAndLoadSyncForBook(bookKey, attachedJsonBlob) {
 // =======================================================
 // XÂY DỰNG VÀ QUẢN LÝ DANH SÁCH TẬP TRUYỆN (PLAYLIST)
 // =======================================================
+// DANH MỤC SÁCH CÔNG KHAI TRÊN CLOUDFLARE R2
+// Không lưu URL bucket hoặc danh sách sách mẫu cố định trong mã nguồn.
+
+function fileNameFromUrl(url, fallback) {
+  try { return decodeURIComponent(new URL(url).pathname.split('/').pop()) || fallback; }
+  catch (error) { return fallback || url; }
+}
+
+async function loadR2Catalog() {
+  const button = dom.btnLoadR2Catalog;
+  if (button) { button.disabled = true; button.textContent = '⏳ Đang tải sách...'; }
+  dom.playlistLoading.classList.remove('hidden');
+  dom.playlistItemsList.replaceChildren();
+  try {
+    const catalogUrlInput = prompt('Nhập URL đầy đủ của books.json trên R2 (ví dụ: https://pub-xxxxxxxx.r2.dev/books.json):');
+    if (!catalogUrlInput || !catalogUrlInput.trim()) {
+      showToast('Đã hủy tải danh sách R2 vì chưa nhập URL.');
+      return;
+    }
+    let catalogUrl;
+    try {
+      catalogUrl = new URL(catalogUrlInput.trim());
+      if (catalogUrl.protocol !== 'https:' || !catalogUrl.pathname.toLowerCase().endsWith('/books.json')) {
+        throw new Error('URL phải là HTTPS và kết thúc bằng /books.json.');
+      }
+    } catch (error) {
+      alert('URL books.json không hợp lệ. ' + error.message);
+      return;
+    }
+    const response = await fetch(catalogUrl.href, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Không tải được books.json (' + response.status + ').');
+    const data = await response.json();
+    const entries = Array.isArray(data) ? data : (data && Array.isArray(data.books) ? data.books : null);
+    if (!entries || !entries.length) throw new Error('books.json không có danh sách sách hợp lệ.');
+    const stories = entries.filter(item => item && item.pdf && (item.audios || item.audio))
+      .map(item => {
+        const audioEntries = item.audios || item.audio || [];
+        const audioList = Array.isArray(audioEntries) ? audioEntries : [audioEntries];
+        const pdfUrl = typeof item.pdf === 'string' ? item.pdf : item.pdf.url;
+        const syncUrl = item.sync || item.json || '';
+        const urls = audioList.map(value => typeof value === 'string' ? value : value && value.url).filter(Boolean);
+        if (!pdfUrl || !urls.length) return null;
+        return {
+          id: item.id || getBookUniqueKey(fileNameFromUrl(pdfUrl, 'book.pdf')),
+          title: item.title || normalizeStoryTitle(fileNameFromUrl(pdfUrl, 'book.pdf')),
+          pdf: { name: fileNameFromUrl(pdfUrl, 'book.pdf'), url: pdfUrl },
+          audios: urls.map(url => ({ name: fileNameFromUrl(url, 'audio.mp3'), url })),
+          json: syncUrl ? { name: fileNameFromUrl(syncUrl, 'sync.json'), url: syncUrl } : null,
+          source: 'r2'
+        };
+      }).filter(Boolean);
+    if (!stories.length) throw new Error('Danh mục books.json không có mục nào gồm PDF và MP3 hợp lệ.');
+    state.playlist = stories;
+    state.activeFilter = 'paired';
+    updatePlaylistBadgeCount();
+    renderPlaylistView();
+    dom.lblPlaylistSubtitle.textContent = stories.length + ' sách trên Cloudflare R2';
+    dom.playlistModal.classList.remove('hidden');
+    showToast('Đã tải ' + stories.length + ' sách từ R2.');
+  } catch (error) {
+    console.error('Không thể tải danh sách sách R2:', error);
+    alert('Không thể tải danh sách sách từ R2. Kiểm tra URL, định dạng books.json và CORS. ' + error.message);
+  } finally {
+    dom.playlistLoading.classList.add('hidden');
+    if (button) { button.disabled = false; button.textContent = '☁️ Sách trên Cloudflare R2'; }
+  }
+}
+
+function getManualR2PublicBase() {
+  const input = dom.r2PublicBaseInput;
+  const raw = input ? input.value.trim() : '';
+  if (!raw) {
+    alert('Vui lòng nhập URL công khai gốc của bucket R2 trước khi xuất books.json. Ví dụ: https://pub-xxxxxxxx.r2.dev');
+    input?.focus();
+    return '';
+  }
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch (error) {
+    alert('URL R2 không hợp lệ. Hãy nhập URL đầy đủ, bắt đầu bằng https://');
+    input?.focus();
+    return '';
+  }
+  if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.r2.dev') || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+    alert('Hãy nhập URL gốc dạng https://pub-xxxxxxxx.r2.dev, không thêm tên tệp, đường dẫn, tham số hoặc dấu #.');
+    input?.focus();
+    return '';
+  }
+  return parsed.origin;
+}
+
+function buildR2ObjectUrl(filename, baseUrl) {
+  const path = String(filename || '').split('/').map(segment => encodeURIComponent(segment)).join('/');
+  return baseUrl + '/' + path;
+}
+
+function exportR2CatalogFromPlaylist() {
+  const baseUrl = getManualR2PublicBase();
+  if (!baseUrl) return;
+
+  const allStories = Array.isArray(state.playlist) ? state.playlist : [];
+  const pairedStories = allStories.filter(story =>
+    story && story.pdf && story.pdf.name && Array.isArray(story.audios) &&
+    story.audios.some(audio => audio && audio.name)
+  );
+
+  if (!pairedStories.length) {
+    alert('Chưa có sách nào đủ PDF và MP3 để xuất. Hãy chọn thư mục chứa sách trước.');
+    return;
+  }
+
+  const books = pairedStories.map(story => ({
+    id: story.id || getBookUniqueKey(story.pdf.name),
+    title: story.title || normalizeStoryTitle(story.pdf.name),
+    pdf: buildR2ObjectUrl(story.pdf.name, baseUrl),
+    audios: story.audios
+      .filter(audio => audio && audio.name)
+      .map(audio => buildR2ObjectUrl(audio.name, baseUrl)),
+    sync: story.json && story.json.name
+      ? buildR2ObjectUrl(story.json.name, baseUrl)
+      : null
+  }));
+
+  const blob = new Blob([JSON.stringify({ books }, null, 2)], {
+    type: 'application/json;charset=utf-8'
+  });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = 'books.json';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+
+  const skippedStories = allStories.filter(story =>
+    !(story && story.pdf && story.pdf.name && Array.isArray(story.audios) &&
+      story.audios.some(audio => audio && audio.name))
+  );
+  let message = 'Đã xuất books.json gồm ' + books.length + ' sách.';
+  if (skippedStories.length) {
+    const details = skippedStories.map(story => {
+      const hasPdf = !!(story && story.pdf && story.pdf.name);
+      const hasAudio = !!(story && Array.isArray(story.audios) && story.audios.some(audio => audio && audio.name));
+      const reason = !hasPdf && !hasAudio ? 'thiếu PDF và MP3' : !hasPdf ? 'thiếu PDF' : 'thiếu MP3';
+      return '- ' + ((story && story.title) || (story && story.id) || 'Mục không tên') + ': ' + reason;
+    });
+    alert(message + '\\n\\nBỏ qua ' + skippedStories.length + ' mục chưa đủ tệp:\\n' + details.join('\\n'));
+  } else {
+    showToast(message);
+  }
+}
+
 function buildPlaylistFromItems(rawItems) {
   const groups = {};
   const jsonItems = [];
@@ -698,24 +879,19 @@ async function loadStoryFromPlaylist(story, audioPartIndex) {
   state.currentStoryAudios = story.audios || [];
   state.currentAudioIndex = (typeof audioPartIndex === 'number') ? audioPartIndex : 0;
 
-  dom.lblLoadingText.textContent = `Đang mở: ${story.title}...`;
+  dom.lblLoadingText.textContent = 'Đang mở: ' + story.title + '...';
   dom.pdfLoadingIndicator.classList.remove('hidden');
 
   try {
     const jsonBlob = story.json ? story.json.blob : null;
-    await resetAndLoadSyncForBook(uniqueKey, jsonBlob);
+    await resetAndLoadSyncForBook(uniqueKey, jsonBlob, story.json ? story.json.url : '');
 
-    // 2. Nạp PDF
-    let pdfLoaded = false;
     if (story.pdf) {
-      if (story.pdf.blob) {
-        pdfLoaded = await loadPdfFromBlob(story.pdf.blob, false);
-      }
+      if (story.pdf.blob) await loadPdfFromBlob(story.pdf.blob, false);
+      else if (story.pdf.url) await loadPdfFromUrl(story.pdf.url, story.pdf.name, false);
     }
 
-    // 3. Nạp audio part được chọn
     loadAudioPart(state.currentAudioIndex);
-
     showToast('📖 Đang đọc: ' + story.title);
     renderPlaylistView();
     updateAudioPartUI();
@@ -734,10 +910,35 @@ function loadAudioPart(index) {
   const clampedIdx = Math.max(0, Math.min(index, audios.length - 1));
   state.currentAudioIndex = clampedIdx;
   const audio = audios[clampedIdx];
-  if (audio.blob) {
-    loadAudioFromBlob(audio.blob);
-  }
+  if (audio.blob) loadAudioFromBlob(audio.blob);
+  else if (audio.url) loadAudioFromUrl(audio.url, audio.name);
   updateAudioPartUI();
+}
+
+function loadAudioFromUrl(url, name) {
+  if (!url) return false;
+  state.audioFileName = name || url.split('/').pop() || 'audio';
+  dom.audioElement.pause();
+  const previousUrl = dom.audioElement.dataset.objectUrl;
+  if (previousUrl) {
+    URL.revokeObjectURL(previousUrl);
+    delete dom.audioElement.dataset.objectUrl;
+  }
+  dom.audioElement.playbackRate = state.speeds[state.speedIndex] || 1.0;
+  dom.audioFileName.textContent = '🎵 ' + state.audioFileName;
+  dom.audioFileName.classList.remove('empty');
+  if (dom.audioSeeker) dom.audioSeeker.value = 0;
+  if (dom.lblAudioCurrentTime) dom.lblAudioCurrentTime.textContent = '00:00';
+  dom.audioElement.src = url;
+  dom.audioElement.load();
+  dom.audioElement.addEventListener('loadedmetadata', () => {
+    try { dom.audioElement.currentTime = 0; } catch (error) {}
+    if (dom.audioSeeker) {
+      dom.audioSeeker.max = Number.isFinite(dom.audioElement.duration) ? dom.audioElement.duration : 0;
+      dom.audioSeeker.value = 0;
+    }
+  }, { once: true });
+  return true;
 }
 
 // CAP NHAT UI THANH CHON AUDIO PART
@@ -786,6 +987,8 @@ function initEvents() {
     dom.playlistModal.classList.remove('hidden');
   });
 
+  if (dom.btnExportR2Catalog) dom.btnExportR2Catalog.addEventListener('click', exportR2CatalogFromPlaylist);
+
   dom.btnClosePlaylist.addEventListener('click', () => dom.playlistModal.classList.add('hidden'));
   dom.playlistModal.addEventListener('click', (e) => {
     if (e.target === dom.playlistModal) dom.playlistModal.classList.add('hidden');
@@ -819,6 +1022,11 @@ function initEvents() {
   dom.btnCloseNode1Modal.addEventListener('click', () => dom.node1Modal.classList.add('hidden'));
   dom.node1Modal.addEventListener('click', (e) => {
     if (e.target === dom.node1Modal) dom.node1Modal.classList.add('hidden');
+  });
+
+  if (dom.btnLoadR2Catalog) dom.btnLoadR2Catalog.addEventListener('click', () => {
+    dom.node1Modal.classList.add('hidden');
+    loadR2Catalog();
   });
 
   dom.btnTriggerFolderPicker.addEventListener('click', () => {
@@ -1084,6 +1292,48 @@ function handleFileList(files) {
   } else {
     alert('Không tìm thấy file PDF hoặc MP3 nào trong thư mục!');
   }
+}
+
+async function loadPdfFromUrl(url, fileName, shouldResetSync = true) {
+  state.pdfFileName = fileName || url.split('/').pop() || 'book.pdf';
+  dom.pdfFileName.textContent = '📄 ' + state.pdfFileName;
+  dom.pdfFileName.classList.remove('empty');
+  dom.lblLoadingText.textContent = 'Đang tải sách từ Cloudflare R2...';
+  dom.pdfLoadingIndicator.classList.remove('hidden');
+
+  const key = state.currentBookKey || getBookUniqueKey(state.pdfFileName);
+  state.currentBookKey = key;
+  if (shouldResetSync) await resetAndLoadSyncForBook(key, null);
+
+  state.pdfLoading = true;
+  try {
+    while (state.pageRendering) await new Promise(resolve => setTimeout(resolve, 16));
+    const previousDoc = state.pdfDoc;
+    state.pdfDoc = null;
+    if (previousDoc && typeof previousDoc.destroy === 'function') {
+      try { await previousDoc.destroy(); } catch (cleanupError) {}
+    }
+    [dom.pdfCanvasLeft, dom.pdfCanvasRight].forEach(canvas => {
+      if (canvas) { canvas.width = 0; canvas.height = 0; }
+    });
+
+    // PDF.js yêu cầu R2 cho phép CORS từ origin của GitHub Pages.
+    const loadingTask = pdfjsLib.getDocument({ url, withCredentials: false });
+    const nextDoc = await loadingTask.promise;
+    state.pdfDoc = nextDoc;
+    state.totalPages = nextDoc.numPages;
+    state.pageNum = 1;
+    dom.lblTotalPages.textContent = state.totalPages;
+    dom.emptyState.classList.add('hidden');
+    dom.canvasWrapper.classList.remove('hidden');
+  } catch (error) {
+    state.pdfDoc = null;
+    throw new Error('Không tải được PDF từ R2. Hãy kiểm tra URL và CORS của bucket. ' + error.message);
+  } finally {
+    state.pdfLoading = false;
+    dom.pdfLoadingIndicator.classList.add('hidden');
+  }
+  if (state.pdfDoc) renderCurrentSpread();
 }
 
 async function loadPdfFromBlob(file, shouldResetSync = true) {
