@@ -48,15 +48,19 @@
       <button id="btnOpenSyncModal" class="icon-btn" title="Quản lý mốc đồng bộ thời gian">
         ⚙️ <span class="hide-mobile">Mốc thời gian</span>
       </button>
+      <button id="btnToggleSettings" class="icon-btn menu-toggle-btn" type="button" aria-controls="filePickerSection" aria-expanded="true" title="Ẩn/hiện dòng chọn tệp và tùy chọn">
+        ☰ <span>Menu</span>
+      </button>
     </div>
   </header>
 
-  <!-- FILE PICKER BAR: 3 NÚT CHÍNH RÕ RÀNG -->
+  <!-- THANH CHỌN TỆP VÀ TÙY CHỌN (ẨN/HIỆN BẰNG MENU) -->
   <section id="filePickerSection" class="file-picker-section">
     <div class="file-picker-card">
       
       <!-- Chọn thư mục để duyệt danh sách tập, hoặc chọn một PDF để mở riêng -->
-      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" title="Chọn thư mục truyện hoặc một file PDF">📂 Chọn thư mục hoặc PDF</button>
+      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" title="Bắt đầu: chọn thư mục hoặc PDF">📂 Bắt đầu <span aria-hidden="true">▾</span></button>
+      <button id="btnChooseAudio" class="action-btn btn-choose-audio hidden" type="button" title="Chọn MP3 cho PDF đang mở">🎵 Chọn MP3</button>
       <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
       <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none;">
       <input type="file" id="audioFileInput" accept="audio/*" multiple style="display:none;">
@@ -225,7 +229,7 @@
           <button id="btnTriggerFolderPicker" class="btn-primary-large">📂 Chọn thư mục</button>
           <div class="divider-text">HOẶC</div>
           <h4>📄 Mở một file PDF</h4>
-          <p class="option-desc">Sau khi chọn PDF, ứng dụng sẽ yêu cầu chọn file MP3 tương ứng.</p>
+          <p class="option-desc">Sau khi chọn PDF, bấm “Chọn MP3” để ghép âm thanh tương ứng.</p>
           <button id="btnTriggerPdfPicker" class="btn-success-large">📄 Chọn PDF</button>
         </div>
       </div>
