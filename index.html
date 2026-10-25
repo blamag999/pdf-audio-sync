@@ -245,9 +245,11 @@
           <button class="filter-tab active" data-filter="paired">📖 Đủ PDF và MP3</button>
           <button class="filter-tab" data-filter="all">Tất cả</button>
         </div>
-        <div class="playlist-export-row" style="padding: 10px 0;">
+        <div class="playlist-export-row" style="padding: 10px 0; display: grid; gap: 8px;">
+          <label for="r2PublicBaseInput"><strong>URL công khai gốc của bucket R2</strong></label>
+          <input id="r2PublicBaseInput" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://pub-xxxxxxxx.r2.dev" style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;">
           <button id="btnExportR2Catalog" class="btn-secondary" type="button" title="Xuất danh mục JSON với URL công khai của các tệp trên Cloudflare R2">📤 Xuất danh sách books.json cho R2</button>
-          <p class="modal-desc" style="margin: 6px 0 0;">Chọn thư mục sách trước, xuất tệp này rồi tải lên thư mục gốc của bucket R2, cùng cấp với PDF và MP3.</p>
+          <p class="modal-desc" style="margin: 0;">Nhập URL cho mỗi lần xuất. Địa chỉ không được lưu. Tải books.json lên thư mục gốc của bucket, cùng cấp với PDF và MP3.</p>
         </div>
       </div>
 
