@@ -1,4 +1,4 @@
-// Ứng dụng đọc PDF và đồng bộ Audio theo từng trang (PDF Audio Sync v5.5 - Sửa mốc online, GDrive, playlist multi-audio)
+// Ứng dụng đọc PDF và đồng bộ âm thanh theo từng trang (PDF Audio Sync)
 
 // STATE CHÍNH CỦA ỨNG DỤNG
 const state = {
@@ -33,7 +33,7 @@ const state = {
 
   // MULTI-AUDIO STATE
   currentAudioIndex: 0,   // Part dang phat trong currentStoryAudios
-  currentStoryAudios: []  // Danh sach audio parts cua story dang mo
+  currentStoryAudios: []  // Danh sách các phần âm thanh của truyện đang mở
 };
 
 // =======================================================
@@ -338,7 +338,7 @@ async function resetAndLoadSyncForBook(bookKey, attachedJsonBlob) {
           saveSyncToStorage();
           updatePageTimestampBadge();
           updateSyncCountBadge();
-          updateSaveStatusBadge('Da nap moc tu folder: ' + jsonNames[ji]);
+          updateSaveStatusBadge('Đã nạp mốc từ thư mục: ' + jsonNames[ji]);
           return;
         }
       } catch (eDir) {}
@@ -393,7 +393,7 @@ function buildPlaylistFromItems(rawItems) {
     }
   });
 
-  // Pass 2: Gan cac file JSON vao dung truyen
+  // Bước 2: Gán các tệp JSON vào đúng truyện
   jsonItems.forEach(function(jItem) {
     const jNorm = normalizeStoryTitle(jItem.name).toLowerCase().replace(/\s+/g, "_");
     // 1. Khop chinh xac id
@@ -410,7 +410,7 @@ function buildPlaylistFromItems(rawItems) {
     }
   });
 
-  // Chi giu cac nhom co PDF hoac Audio (loai bo file json mo coi khong tao thanh card gia)
+  // Chỉ giữ nhóm có PDF hoặc âm thanh; không tạo thẻ giả từ tệp JSON mốc đọc.
   const playlistArray = Object.values(groups).filter(function(g) {
     return g.pdf || (g.audios && g.audios.length > 0);
   });
@@ -438,10 +438,10 @@ function buildPlaylistFromItems(rawItems) {
   if (playlistArray.length > 0) {
     dom.lblPlaylistSubtitle = document.getElementById('lblPlaylistSubtitle');
     if (dom.lblPlaylistSubtitle) {
-      dom.lblPlaylistSubtitle.textContent = 'Tim thay ' + playlistArray.length + ' tap truyen trong thu muc';
+      dom.lblPlaylistSubtitle.textContent = 'Tìm thấy ' + playlistArray.length + ' tập truyện trong thư mục';
     }
     dom.playlistModal.classList.remove('hidden');
-    showToast('Da nap danh sach ' + playlistArray.length + ' tap truyen!');
+    showToast('Đã nạp danh sách ' + playlistArray.length + ' tập truyện!');
   }
 }
 function updatePlaylistBadgeCount() {
@@ -519,7 +519,7 @@ function renderPlaylistView() {
         '<div class="card-tags">' + tagsHtml + '</div>' +
         audioPartBtnsHtml +
       '</div>' +
-      '<button class="card-play-btn">' + (isPlaying ? 'Dang doc' : '&#9654; Mo') + '</button>';
+      '<button class="card-play-btn">' + (isPlaying ? 'Đang đọc' : '&#9654; Mở') + '</button>';
 
     card.addEventListener('click', function(e) {
       if (e.target.classList.contains('card-part-btn')) return;
@@ -622,15 +622,10 @@ function updateAudioPartUI() {
 // CHON AUDIO PART
 window.selectAudioPart = function(index) {
   loadAudioPart(index);
-  showToast('Chuyen sang Part ' + (index + 1));
+  showToast('Đã chuyển sang phần ' + (index + 1));
 };
 
-// =======================================================
-// QUÉT THƯ MỤC GOOGLE DRIVE
-// =======================================================
-// =======================================================
-// TẢI VÀ NẠP DANH MỤC TỪ CLOUDFLARE R2 (CATALOG BOOKS.JSON)
-// =======================================================
+// Nguồn nội dung: tệp PDF và âm thanh cục bộ; chỉ đồng bộ JSON mốc đọc qua GitHub.
 // =======================================================
 // SỰ KIỆN GIAO DIỆN
 // =======================================================
