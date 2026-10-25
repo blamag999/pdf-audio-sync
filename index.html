@@ -59,16 +59,11 @@
   <section id="filePickerSection" class="file-picker-section">
     <div class="file-picker-card">
       
-      <!-- NÚT 1: THƯ MỤC NỘI DUNG (MÁY, GOOGLE DRIVE HOẶC R2 CLOUD) -->
-      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" title="Mở thư mục máy, Google Drive hoặc Thư viện Cloud R2">
+      <!-- NÚT 1: THƯ MỤC CỤC BỘ -->
+      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" title="Mở thư mục máy, nguồn trực tuyến hoặc Thư viện Cloud R2">
         📁 Nút 1: Thư mục / Drive / R2
       </button>
       <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
-
-      <!-- NÚT MỞ NHANH THƯ VIỆN CLOUDFLARE R2 -->
-      <button id="btnOpenR2Library" class="action-btn btn-node-r2" title="Mở thư viện sách Cloudflare R2 Online">
-        ⚡ Thư viện R2 Cloud
-      </button>
 
       <!-- NÚT 2: CHỌN FILE PDF (TỰ ĐỘNG MỞ MP3 VÀ MỐC NẾU ĐÃ TỪNG MỞ) -->
       <label for="pdfFileInput" class="action-btn btn-node-2" title="Chọn file PDF truyện (Tự động nạp MP3 và mốc nếu đã từng mở)">
@@ -123,13 +118,13 @@
     <div id="emptyState" class="empty-state">
       <div class="empty-icon">📚</div>
       <h2>Trình Đọc PDF & Khớp Audio Thông Minh</h2>
-      <p>Chọn thư mục hoặc dán link Google Drive để hiện danh sách toàn bộ các tập truyện:</p>
+      <p>Chọn thư mục hoặc dán link nguồn trực tuyến để hiện danh sách toàn bộ các tập truyện:</p>
       
       <div class="empty-guide-card">
         <div class="guide-item" id="cardGuideFolder">
           <div class="item-icon">📁</div>
           <div class="item-text">
-            <b>Nút 1: Thư mục máy hoặc Link Google Drive</b>
+            <b>Chọn thư mục trên thiết bị</b>
             <span>Hiện danh sách toàn bộ truyện & audio để chọn nhanh chỉ 1 chạm</span>
           </div>
         </div>
@@ -153,7 +148,7 @@
 
       <div class="feature-tags">
         <span>⚡ Danh sách tập chọn nhanh</span>
-        <span>☁️ Hỗ trợ trọn thư mục Drive</span>
+        <span>☁️ Đồng bộ mốc đọc qua GitHub</span>
         <span>📖 2 Trang cùng lúc</span>
         <span>💾 Tự lưu mốc vào máy</span>
       </div>
@@ -219,68 +214,18 @@
     <audio id="audioElement" preload="metadata"></audio>
   </footer>
 
-  <!-- MODAL NÚT 1: CHỌN THƯ MỤC TRÊN MÁY HOẶC GOOGLE DRIVE -->
+  <!-- MODAL NÚT 1: CHỌN THƯ MỤC CỤC BỘ -->
   <div id="node1Modal" class="modal-overlay hidden">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>📁 Nút 1: Mở thư mục nội dung (Máy hoặc Online)</h3>
+        <h3>📁 Mở thư mục PDF và MP3 trên thiết bị</h3>
         <button id="btnCloseNode1Modal" class="close-btn">&times;</button>
       </div>
-
       <div class="modal-body">
-        <!-- LỰA CHỌN A: THƯ MỤC MÁY -->
         <div class="option-block">
-          <h4>💻 Cách A: Thư mục trên máy tính / điện thoại</h4>
-          <p class="option-desc">Quét toàn bộ thư mục và hiện danh sách các tập PDF & MP3 để chọn nhanh:</p>
-          <button id="btnTriggerFolderPicker" class="btn-primary-large">
-            📂 Chọn thư mục trên thiết bị
-          </button>
-        </div>
-
-        <div class="divider-text">HOẶC</div>
-
-        <!-- LỰA CHỌN B: GOOGLE DRIVE ONLINE -->
-        <div class="option-block">
-          <h4>☁️ Cách B: Dán link THƯ MỤC hoặc FILE từ Google Drive</h4>
-          <div class="guide-box">
-            <p><b>💡 Mẹo:</b> Bạn có thể dán trực tiếp link cả THƯ MỤC Google Drive (như <code>https://drive.google.com/drive/folders/...</code>), ứng dụng sẽ tự động quét và liệt kê toàn bộ truyện bên trong!</p>
-          </div>
-
-          <div class="form-group">
-            <label for="txtOnlineFolder">🔗 Link thư mục Google Drive (hoặc link PDF):</label>
-            <input type="text" id="txtOnlineFolder" class="text-input" placeholder="https://drive.google.com/drive/folders/1zWdlrJklSiy2c0fGuaGssV3Rb11NYc7f">
-          </div>
-
-          <div class="form-group">
-            <label for="txtOnlineAudio">🎵 Link file MP3 (nếu là file lẻ):</label>
-            <input type="text" id="txtOnlineAudio" class="text-input" placeholder="(Không bắt buộc nếu đã nhập link thư mục ở trên)">
-          </div>
-
-          <div class="modal-actions-right">
-            <button id="btnLoadOnlineLinks" class="btn-success-large">
-              🚀 Quét & Mở danh sách truyện
-            </button>
-          </div>
-
-        <div class="divider-text">HOẶC</div>
-
-        <!-- LỰA CHỌN C: THƯ VIỆN CLOUDFLARE R2 -->
-        <div class="option-block option-r2-block">
-          <h4>⚡ Cách C: Thư viện Online Cloudflare R2</h4>
-          <div class="guide-box">
-            <p><b>🚀 Tải siêu tốc:</b> Đọc sách PDF và nghe Audio trực tiếp từ kho Cloudflare R2 với tốc độ cao, hỗ trợ tự khớp mốc và chạy mượt mà.</p>
-          </div>
-
-          <div class="form-group">
-            <label for="txtR2CatalogUrl">🔗 Đường dẫn danh mục sách R2 (catalog books.json):</label>
-            <input type="text" id="txtR2CatalogUrl" class="text-input" placeholder="https://pub-763a3a5ae235415cbef15b64f7a20820.r2.dev/books.json" value="https://pub-763a3a5ae235415cbef15b64f7a20820.r2.dev/books.json">
-          </div>
-
-          <div class="modal-actions-right">
-            <button id="btnLoadR2Catalog" class="btn-primary-large btn-r2-action">
-              ⚡ Tải thư viện sách từ Cloudflare R2
-            </button>
-          </div>
+          <h4>💻 Thư mục trên máy tính hoặc điện thoại</h4>
+          <p class="option-desc">Chọn thư mục chứa PDF, MP3 và JSON mốc thời gian. Ứng dụng chỉ đọc tệp cục bộ; mốc đọc được đồng bộ riêng qua GitHub.</p>
+          <button id="btnTriggerFolderPicker" class="btn-primary-large">📂 Chọn thư mục trên thiết bị</button>
         </div>
       </div>
     </div>
@@ -332,7 +277,8 @@
 
         <div class="sync-actions-row">
           <button id="btnExportSync" class="btn-secondary" title="Xuất file mốc để lưu vào thư mục truyện trên máy">📥 Tải file mốc cho thư mục máy (.json)</button>
-          <button id="btnSaveToGithubFolder" class="btn-primary" title="Tải file mốc để đưa vào thư mục sync_data trên GitHub">☁️ Tải file cho GitHub (sync_data)</button>
+          <button id="btnSaveToGithubFolder" class="btn-primary" title="Lưu trực tiếp các mốc vào GitHub">☁️ Đồng bộ GitHub</button>
+          <p class="modal-desc">Mốc được lưu trong sync_data theo tên PDF. Để ghi mốc, cần GitHub Personal Access Token có quyền Contents: Read and write. Token chỉ được giữ trong phiên trình duyệt hiện tại.</p>
           <label for="importSyncInput" class="btn-secondary">
             📂 Nhập file mốc từ máy
           </label>
