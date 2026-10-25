@@ -165,6 +165,7 @@ const dom = {
   pdfFileName: document.getElementById('pdfFileName'),
   audioFileName: document.getElementById('audioFileName'),
   syncCountBadge: document.getElementById('syncCountBadge'),
+  syncBanner: document.getElementById('syncBanner'),
 
   filePickerSection: document.getElementById('filePickerSection'),
 
@@ -676,10 +677,11 @@ function initEvents() {
   dom.btnToggleSettings.addEventListener('click', () => {
     const willHide = !dom.filePickerSection.classList.contains('hidden');
     dom.filePickerSection.classList.toggle('hidden', willHide);
+    dom.syncBanner.classList.toggle('hidden', willHide);
     dom.btnToggleSettings.setAttribute('aria-expanded', String(!willHide));
     dom.btnToggleSettings.title = willHide
-      ? 'Hiện dòng chọn tệp và tùy chọn'
-      : 'Ẩn dòng chọn tệp và tùy chọn';
+      ? 'Hiện dòng chọn tệp, tùy chọn và thanh mốc trang'
+      : 'Ẩn dòng chọn tệp, tùy chọn và thanh mốc trang';
   });
   dom.btnChooseAudio.addEventListener('click', () => dom.audioFileInput.click());
   dom.btnCloseNode1Modal.addEventListener('click', () => dom.node1Modal.classList.add('hidden'));
