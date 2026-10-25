@@ -151,6 +151,7 @@ const dom = {
   playlistItemsList: document.getElementById('playlistItemsList'),
   playlistLoading: document.getElementById('playlistLoading'),
   btnExportR2Catalog: document.getElementById('btnExportR2Catalog'),
+  r2PublicBaseInput: document.getElementById('r2PublicBaseInput'),
 
   btnNode1FolderOnline: document.getElementById('btnNode1FolderOnline'),
   btnToggleSettings: document.getElementById('btnToggleSettings'),
@@ -593,12 +594,39 @@ async function loadR2Catalog() {
   }
 }
 
-function buildR2ObjectUrl(filename) {
+function getManualR2PublicBase() {
+  const input = dom.r2PublicBaseInput;
+  const raw = input ? input.value.trim() : '';
+  if (!raw) {
+    alert('Vui lòng nhập URL công khai gốc của bucket R2 trước khi xuất books.json. Ví dụ: https://pub-xxxxxxxx.r2.dev');
+    input?.focus();
+    return '';
+  }
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch (error) {
+    alert('URL R2 không hợp lệ. Hãy nhập URL đầy đủ, bắt đầu bằng https://');
+    input?.focus();
+    return '';
+  }
+  if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.r2.dev') || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+    alert('Hãy nhập URL gốc dạng https://pub-xxxxxxxx.r2.dev, không thêm tên tệp, đường dẫn, tham số hoặc dấu #.');
+    input?.focus();
+    return '';
+  }
+  return parsed.origin;
+}
+
+function buildR2ObjectUrl(filename, baseUrl) {
   const path = String(filename || '').split('/').map(segment => encodeURIComponent(segment)).join('/');
-  return R2_PUBLIC_BASE + '/' + path;
+  return baseUrl + '/' + path;
 }
 
 function exportR2CatalogFromPlaylist() {
+  const baseUrl = getManualR2PublicBase();
+  if (!baseUrl) return;
+
   const allStories = Array.isArray(state.playlist) ? state.playlist : [];
   const pairedStories = allStories.filter(story =>
     story && story.pdf && story.pdf.name && Array.isArray(story.audios) &&
@@ -613,17 +641,16 @@ function exportR2CatalogFromPlaylist() {
   const books = pairedStories.map(story => ({
     id: story.id || getBookUniqueKey(story.pdf.name),
     title: story.title || normalizeStoryTitle(story.pdf.name),
-    pdf: buildR2ObjectUrl(story.pdf.name),
+    pdf: buildR2ObjectUrl(story.pdf.name, baseUrl),
     audios: story.audios
       .filter(audio => audio && audio.name)
-      .map(audio => buildR2ObjectUrl(audio.name)),
+      .map(audio => buildR2ObjectUrl(audio.name, baseUrl)),
     sync: story.json && story.json.name
-      ? buildR2ObjectUrl(story.json.name)
+      ? buildR2ObjectUrl(story.json.name, baseUrl)
       : null
   }));
 
-  const catalog = { books };
-  const blob = new Blob([JSON.stringify(catalog, null, 2)], {
+  const blob = new Blob([JSON.stringify({ books }, null, 2)], {
     type: 'application/json;charset=utf-8'
   });
   const objectUrl = URL.createObjectURL(blob);
@@ -635,9 +662,22 @@ function exportR2CatalogFromPlaylist() {
   link.remove();
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 
-  const skipped = allStories.length - pairedStories.length;
-  showToast('Đã xuất books.json gồm ' + books.length + ' sách' +
-    (skipped > 0 ? '; bỏ qua ' + skipped + ' mục chưa đủ PDF và MP3.' : '.'));
+  const skippedStories = allStories.filter(story =>
+    !(story && story.pdf && story.pdf.name && Array.isArray(story.audios) &&
+      story.audios.some(audio => audio && audio.name))
+  );
+  let message = 'Đã xuất books.json gồm ' + books.length + ' sách.';
+  if (skippedStories.length) {
+    const details = skippedStories.map(story => {
+      const hasPdf = !!(story && story.pdf && story.pdf.name);
+      const hasAudio = !!(story && Array.isArray(story.audios) && story.audios.some(audio => audio && audio.name));
+      const reason = !hasPdf && !hasAudio ? 'thiếu PDF và MP3' : !hasPdf ? 'thiếu PDF' : 'thiếu MP3';
+      return '- ' + ((story && story.title) || (story && story.id) || 'Mục không tên') + ': ' + reason;
+    });
+    alert(message + '\\n\\nBỏ qua ' + skippedStories.length + ' mục chưa đủ tệp:\\n' + details.join('\\n'));
+  } else {
+    showToast(message);
+  }
 }
 
 function buildPlaylistFromItems(rawItems) {
