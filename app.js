@@ -152,6 +152,7 @@ const dom = {
   btnNode1FolderOnline: document.getElementById('btnNode1FolderOnline'),
   btnToggleSettings: document.getElementById('btnToggleSettings'),
   btnChooseAudio: document.getElementById('btnChooseAudio'),
+  btnDirectPdfPicker: document.getElementById('btnDirectPdfPicker'),
   folderInput: document.getElementById('folderInput'),
   pdfFileInput: document.getElementById('pdfFileInput'),
   audioFileInput: document.getElementById('audioFileInput'),
@@ -670,7 +671,8 @@ function initEvents() {
     });
   });
 
-  dom.btnNode1FolderOnline.addEventListener('click', () => dom.node1Modal.classList.remove('hidden'));
+  dom.btnNode1FolderOnline.addEventListener('click', () => handleFolderPick());
+  dom.btnDirectPdfPicker.addEventListener('click', () => dom.pdfFileInput.click());
   dom.btnToggleSettings.addEventListener('click', () => {
     const willHide = !dom.filePickerSection.classList.contains('hidden');
     dom.filePickerSection.classList.toggle('hidden', willHide);
