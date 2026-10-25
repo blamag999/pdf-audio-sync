@@ -1940,3 +1940,115 @@ button:focus-visible, select:focus-visible, input:focus-visible, label.action-bt
   .controls-row { gap: 5px; padding: 6px; }
   .controls-row .page-ctrl { font-size: .76rem; padding-inline: 4px; }
 }
+
+
+/* Chọn tệp trực tiếp và hàng điều khiển dạng nút độc lập */
+.file-picker-card > .btn-node-1,
+.file-picker-card > .btn-direct-pdf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 13px;
+  border-radius: 9px;
+  font-weight: 700;
+}
+.file-picker-card > .btn-direct-pdf {
+  flex-wrap: wrap;
+  background: #1d2c43;
+  border: 1px solid rgba(125,160,205,.35);
+  color: #dbeafe;
+}
+.file-picker-card > .btn-direct-pdf small {
+  display: block;
+  width: 100%;
+  flex-basis: 100%;
+  color: #a8bdd8;
+  font-size: .7rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.controls-row {
+  grid-template-columns: 44px 44px minmax(100px,1fr) 44px 44px 40px 68px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  box-shadow: none;
+}
+.controls-row #btnPrevPage,
+.controls-row #btnNextPage,
+.controls-row #btnRewind5,
+.controls-row #btnForward5 {
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  font-size: 1.15rem !important;
+  line-height: 1;
+}
+.controls-row #btnPrevPage {
+  background: #1d4ed8;
+  border: 1px solid #60a5fa;
+  color: #fff;
+}
+.controls-row #btnNextPage {
+  background: #047857;
+  border: 1px solid #34d399;
+  color: #fff;
+}
+.controls-row #btnRewind5,
+.controls-row #btnForward5 {
+  background: #26374f;
+  border: 1px solid #526985;
+  color: #e5eefb;
+}
+.controls-row #btnPlayPause {
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  border-radius: 9px;
+  font-size: 1.45rem;
+  background: linear-gradient(135deg,#f59e0b,#ea580c);
+  border: 1px solid rgba(253,230,138,.72);
+  box-shadow: 0 3px 12px rgba(234,88,12,.25);
+}
+.controls-row #btnPlayPause.is-playing {
+  background: linear-gradient(135deg,#dc2626,#b91c1c);
+}
+.controls-row #btnReplayPage {
+  width: 36px;
+  height: 36px;
+  min-height: 36px !important;
+  border-radius: 9px;
+}
+@media (max-width: 760px) {
+  .file-picker-card > .btn-node-1,
+  .file-picker-card > .btn-direct-pdf { flex: 1 1 100%; }
+  .file-picker-card > .btn-direct-pdf small { font-size: .72rem; }
+  .controls-row {
+    grid-template-columns: repeat(4,minmax(0,1fr));
+    gap: 7px;
+  }
+  .controls-row #btnPrevPage,
+  .controls-row #btnNextPage { grid-column: span 2; }
+  .controls-row #btnRewind5 { grid-column: 1; grid-row: 2; }
+  .controls-row #btnPlayPause { grid-column: 2 / span 2; grid-row: 2; width: 100%; }
+  .controls-row #btnForward5 { grid-column: 4; grid-row: 2; }
+  .controls-row #btnReplayPage { grid-column: 1 / span 2; grid-row: 3; justify-self: center; }
+  .controls-row .speed-select-wrap { grid-column: 3 / span 2; grid-row: 3; width: 100%; }
+  .controls-row #speedSelect { width: 100%; }
+}
+@media (max-width: 420px) {
+  .controls-row #btnPrevPage,
+  .controls-row #btnNextPage,
+  .controls-row #btnRewind5,
+  .controls-row #btnForward5 { width: 38px; height: 38px; min-height: 38px; }
+  .controls-row #btnPlayPause { height: 44px; min-height: 44px; }
+}
