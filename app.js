@@ -270,7 +270,7 @@ async function syncCurrentBookToGitHub({askForToken=false}={}){
  }catch(e){console.error(e);updateSaveStatusBadge('⚠️ Đồng bộ GitHub lỗi');if(askForToken)alert('Không thể đồng bộ. Kiểm tra token và quyền Contents: Read and write.\\n\\n'+e.message);return false;}
 }
 function scheduleGitHubSync(){if(!getGithubToken()||!state.currentBookKey)return;if(githubSyncTimer)clearTimeout(githubSyncTimer);githubSyncTimer=setTimeout(()=>{githubSyncTimer=null;syncCurrentBookToGitHub();},900);}
-async async function reloadCurrentBookFromGitHub() {
+async function reloadCurrentBookFromGitHub() {
   if (!state.pdfFileName || !state.currentBookKey) {
     showToast('Trước tiên hãy mở PDF cần đồng bộ.');
     return;
@@ -292,7 +292,7 @@ async async function reloadCurrentBookFromGitHub() {
   }
 }
 
-function loadCloudSyncForBook(){
+async function loadCloudSyncForBook(){
   const stems=[...new Set([getSyncStem(),state.currentBookKey].filter(Boolean))];
   for(const stem of stems){
     // Ưu tiên tên chuẩn mới, sau đó thử tên cũ có hậu tố _sync.
