@@ -820,11 +820,12 @@ async function handlePdfFileSelect(e) {
 
 async function handleAudioFileSelect(e) {
   const files = Array.from(e.target.files || []);
+  e.target.value = '';
   if (files.length === 0) return;
 
-  // Reset input để người dùng có thể chọn lại cùng file nếu muốn
-  e.target.value = '';
-
+  dom.pdfLoadingIndicator.classList.remove('hidden');
+  dom.lblLoadingText.textContent = 'Đang nạp tệp âm thanh...';
+  try {
   // Chuyển danh sách file thành audio items có partLabel và sắp xếp
   const audioItems = files.map(f => {
     const partMatch = f.name.match(/part[_\s-]*(\d+)|side[_\s-]*([ab])|disc[_\s-]*(\d+)|\b(\d+)\s*of\s*\d+/i);
@@ -871,12 +872,19 @@ async function handleAudioFileSelect(e) {
   }
 
   const currentKey = state.currentBookKey || key;
-  saveBookToLibrary({
+  await saveBookToLibrary({
     id: currentKey,
     audioName: audioItems[0].name,
     audioBlob: audioItems[0].blob,
     audios: audioItems
   });
+  showToast(`Đã nạp ${audioItems.length} tệp âm thanh. Nhấn Play để bắt đầu nghe.`);
+  } catch (error) {
+    console.error('Lỗi khi nạp MP3:', error);
+    showToast('Không thể nạp MP3: ' + (error && error.message ? error.message : 'Lỗi không xác định'));
+  } finally {
+    dom.pdfLoadingIndicator.classList.add('hidden');
+  }
 }
 
 // =======================================================
@@ -966,19 +974,40 @@ async function loadPdfFromBlob(file, shouldResetSync = true) {
 }
 
 function loadAudioFromBlob(file) {
-  state.audioFileName = file.name;
-  dom.audioElement.playbackRate = state.speeds[state.speedIndex] || 1.0;
-  dom.audioFileName.textContent = `🎵 ${file.name}`;
-  dom.audioFileName.classList.remove('empty');
+  if (!(file instanceof Blob)) {
+    showToast('Tệp âm thanh không hợp lệ. Hãy chọn lại MP3.');
+    return false;
+  }
 
+  state.audioFileName = file.name || 'audio';
   dom.audioElement.pause();
-  dom.audioElement.currentTime = 0;
+  dom.audioElement.playbackRate = state.speeds[state.speedIndex] || 1.0;
+  dom.audioFileName.textContent = `🎵 ${state.audioFileName}`;
+  dom.audioFileName.classList.remove('empty');
   if (dom.audioSeeker) dom.audioSeeker.value = 0;
   if (dom.lblAudioCurrentTime) dom.lblAudioCurrentTime.textContent = '00:00';
 
+  // Gán nguồn mới trước khi đặt currentTime. Sau khi chọn PDF, audio element
+  // không còn nguồn; gán currentTime=0 lúc này có thể ném InvalidStateError
+  // trên một số trình duyệt và làm dừng luồng xử lý chọn MP3.
   const objectUrl = URL.createObjectURL(file);
+  const previousUrl = dom.audioElement.dataset.objectUrl;
+  if (previousUrl) URL.revokeObjectURL(previousUrl);
+  dom.audioElement.dataset.objectUrl = objectUrl;
   dom.audioElement.src = objectUrl;
   dom.audioElement.load();
+
+  dom.audioElement.addEventListener('loadedmetadata', () => {
+    try { dom.audioElement.currentTime = 0; } catch (error) {
+      console.warn('Không thể đặt thời gian về đầu audio:', error);
+    }
+    if (dom.audioSeeker) {
+      dom.audioSeeker.max = Number.isFinite(dom.audioElement.duration) ? dom.audioElement.duration : 0;
+      dom.audioSeeker.value = 0;
+    }
+  }, { once: true });
+
+  return true;
 }
 
 async function renderCurrentSpread() {
