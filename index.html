@@ -272,7 +272,18 @@
           <button id="btnExportSync" class="btn-secondary" title="Xuất tệp mốc để lưu cùng thư mục truyện trên máy">📥 Tải tệp mốc (.json)</button>
           <button id="btnSaveToGithubFolder" class="btn-primary" title="Lưu trực tiếp các mốc vào GitHub">☁️ Đồng bộ GitHub</button>
           <button id="btnLoadFromGithub" class="btn-secondary" title="Tải lại mốc thời gian mới nhất từ GitHub">⬇️ Tải mốc từ GitHub</button>
-          <p class="modal-desc">Mốc được lưu trong sync_data theo tên PDF. Trên thiết bị mới, mở PDF tương ứng rồi tải mốc từ GitHub nếu chưa tự nạp. Để ghi mốc, cần GitHub Personal Access Token có quyền Contents: Read and write; token chỉ được giữ trong phiên trình duyệt hiện tại.</p>
+          <p class="modal-desc">Mốc được lưu trong sync_data theo tên PDF. Tệp PDF và âm thanh vẫn nằm trên thiết bị của bạn.</p>
+          <div class="github-token-panel" style="border:1px solid #475569;border-radius:10px;padding:12px;margin:10px 0;display:grid;gap:8px;">
+            <strong>🔐 GitHub Token</strong>
+            <p id="githubTokenStatus" class="modal-desc" style="margin:0;">Chưa có token trong phiên này.</p>
+            <label for="githubTokenInput">Nhập token mới (quyền Contents: Read and write)</label>
+            <input id="githubTokenInput" type="password" autocomplete="new-password" placeholder="github_pat_..." style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;">
+            <div class="sync-actions-row">
+              <button id="btnSaveGithubToken" type="button" class="btn-primary">🔑 Lưu / thay token</button>
+              <button id="btnClearGithubToken" type="button" class="btn-danger">🗑️ Xóa token đang lưu</button>
+            </div>
+            <p class="modal-desc" style="margin:0;">Token chỉ lưu trong sessionStorage của tab/phiên trình duyệt hiện tại, không ghi vào mã nguồn hay GitHub. Xóa token ở đây chỉ xóa token khỏi phiên trình duyệt; muốn thu hồi quyền truy cập, hãy thu hồi token trên trang cài đặt GitHub.</p>
+          </div>
           <label for="importSyncInput" class="btn-secondary">
             📂 Nhập file mốc từ máy
           </label>
