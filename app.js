@@ -198,6 +198,7 @@ const dom = {
   btnPrevPage: document.getElementById('btnPrevPage'),
   btnNextPage: document.getElementById('btnNextPage'),
   btnPlayPause: document.getElementById('btnPlayPause'),
+  playPauseIcon: document.getElementById('playPauseIcon'),
   btnRewind5: document.getElementById('btnRewind5'),
   btnForward5: document.getElementById('btnForward5'),
   speedSelect: document.getElementById('speedSelect'),
@@ -746,9 +747,21 @@ dom.selPageTurnMode.value = state.pageTurnMode;
   });
   dom.audioElement.addEventListener('timeupdate', onAudioTimeUpdate);
   dom.audioElement.addEventListener('loadedmetadata', onAudioMetadataLoaded);
-  dom.audioElement.addEventListener('play', () => { dom.btnPlayPause.textContent = '⏸'; });
-  dom.audioElement.addEventListener('pause', () => { dom.btnPlayPause.textContent = '▶'; });
-  dom.audioElement.addEventListener('ended', onAudioEnded);
+  dom.audioElement.addEventListener('play', updatePlayButtonState);
+  dom.audioElement.addEventListener('pause', updatePlayButtonState);
+  dom.audioElement.addEventListener('ended', () => {
+    updatePlayButtonState();
+    onAudioEnded();
+  });
+  dom.audioElement.addEventListener('error', () => {
+    if (!dom.audioElement.src) return;
+    const mediaError = dom.audioElement.error;
+    const reason = mediaError && mediaError.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED
+      ? 'Định dạng hoặc tệp âm thanh không được trình duyệt hỗ trợ.'
+      : 'Không thể tải tệp âm thanh. Hãy thử chọn lại file MP3.';
+    showToast(reason);
+    updatePlayButtonState();
+  });
 
   dom.audioSeeker.addEventListener('input', (e) => {
     dom.audioElement.currentTime = parseFloat(e.target.value);
@@ -1229,15 +1242,41 @@ async function saveSyncToDirectoryOrDownload() {
   }
 }
 
-function togglePlayPause() {
-  if (!dom.audioElement.src) {
-    alert('Chưa có file MP3 nào được nạp!');
+function updatePlayButtonState() {
+  const isPlaying = !dom.audioElement.paused && !dom.audioElement.ended;
+  dom.playPauseIcon.textContent = isPlaying ? 'Ⅱ' : '▶';
+  dom.btnPlayPause.setAttribute('aria-label', isPlaying ? 'Tạm dừng' : 'Phát');
+  dom.btnPlayPause.title = isPlaying ? 'Tạm dừng' : 'Phát';
+  dom.btnPlayPause.setAttribute('aria-pressed', String(isPlaying));
+  dom.btnPlayPause.classList.toggle('is-playing', isPlaying);
+}
+
+async function togglePlayPause() {
+  const hasAudioSource = Boolean(dom.audioElement.currentSrc || dom.audioElement.src);
+  if (!hasAudioSource || !state.currentStoryAudios || state.currentStoryAudios.length === 0) {
+    showToast('Chưa có MP3. Hãy chọn PDF (nếu cần), sau đó bấm “Chọn MP3” để nạp âm thanh.');
+    dom.btnChooseAudio.classList.remove('hidden');
+    dom.btnChooseAudio.focus({ preventScroll: true });
     return;
   }
-  if (dom.audioElement.paused) {
-    dom.audioElement.play();
-  } else {
+
+  if (!dom.audioElement.paused && !dom.audioElement.ended) {
     dom.audioElement.pause();
+    return;
+  }
+
+  try {
+    // Đưa nút về trạng thái tạm dừng trong khi trình duyệt bắt đầu phát.
+    await dom.audioElement.play();
+  } catch (error) {
+    updatePlayButtonState();
+    console.error('Không thể phát âm thanh:', error);
+    const message = error && error.name === 'NotAllowedError'
+      ? 'Trình duyệt chặn phát âm thanh. Hãy bấm Play trực tiếp sau khi chọn MP3.'
+      : error && error.name === 'NotSupportedError'
+        ? 'File âm thanh không được trình duyệt hỗ trợ. Hãy chọn file MP3 khác.'
+        : 'Không phát được âm thanh. Hãy kiểm tra file MP3 rồi thử lại.';
+    showToast(message);
   }
 }
 
