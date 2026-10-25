@@ -48,7 +48,7 @@
       <button id="btnOpenSyncModal" class="icon-btn" title="Quản lý mốc đồng bộ thời gian">
         ⚙️ <span class="hide-mobile">Mốc thời gian</span>
       </button>
-      <button id="btnToggleSettings" class="icon-btn menu-toggle-btn" type="button" aria-controls="filePickerSection" aria-expanded="true" title="Ẩn/hiện dòng chọn tệp và tùy chọn">
+      <button id="btnToggleSettings" class="icon-btn menu-toggle-btn" type="button" aria-controls="filePickerSection syncBanner" aria-expanded="true" title="Ẩn/hiện dòng chọn tệp và tùy chọn">
         ☰ <span>Menu</span>
       </button>
     </div>
@@ -152,7 +152,7 @@
 
   <!-- BOTTOM FLOATING AUDIO & SYNC CONTROLLER -->
   <footer class="app-footer">
-    <div class="sync-banner">
+    <div class="sync-banner" id="syncBanner">
       <div class="sync-info">
         <span class="page-badge"><span id="lblPagePrefix">Trang</span> <b id="lblCurrentPage">0</b> / <span id="lblTotalPages">0</span></span>
         <label class="page-jump-control" title="Nhập số trang cần mở">
