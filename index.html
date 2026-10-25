@@ -58,9 +58,8 @@
   <section id="filePickerSection" class="file-picker-section">
     <div class="file-picker-card">
       
-      <!-- Chọn thư mục trực tiếp hoặc mở một PDF riêng -->
-      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" type="button" title="Chọn thư mục để duyệt danh sách tập">📁 Chọn thư mục</button>
-      <button id="btnDirectPdfPicker" class="action-btn btn-direct-pdf" type="button" title="Chọn PDF, sau đó chọn file MP3 tương ứng">📄 Chọn PDF <small>Cần chọn file MP3 tương ứng để nghe</small></button>
+      <!-- Nút bắt đầu mở hộp thoại lựa chọn cách nạp nội dung -->
+      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" type="button" title="Bắt đầu: chọn thư mục hoặc PDF">📂 Bắt đầu</button>
       <button id="btnChooseAudio" class="action-btn btn-choose-audio hidden" type="button" title="Chọn MP3 cho PDF đang mở">🎵 Chọn MP3</button>
       <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
       <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none;">
@@ -113,29 +112,15 @@
       <h2>Trình đọc PDF và đồng bộ âm thanh</h2>
       <p>Chọn thư mục để duyệt danh sách tập, hoặc chọn một PDF để ghép với MP3 tương ứng:</p>
       
-      <div class="empty-guide-card">
-        <div class="guide-item" id="cardGuideFolder">
-          <div class="item-icon">📁</div>
-          <div class="item-text">
-            <b>Chọn thư mục</b>
-            <span>Hiển thị danh sách tập để chọn nghe</span>
-          </div>
-        </div>
-
-        <div class="guide-item" id="cardGuidePdf">
-          <div class="item-icon">📄</div>
-          <div class="item-text">
-            <b>Chọn một PDF</b>
-            <span>Ứng dụng sẽ hỏi file MP3 tương ứng</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="feature-tags">
-        <span>⚡ Danh sách tập chọn nhanh</span>
-        <span>☁️ Đồng bộ mốc đọc qua GitHub</span>
-        <span>📖 2 Trang cùng lúc</span>
-        <span>💾 Tự lưu mốc vào máy</span>
+      <div class="usage-guide">
+        <h3>Hướng dẫn nhanh</h3>
+        <ol>
+          <li>Nhấn <strong>Bắt đầu</strong> để chọn cách mở nội dung.</li>
+          <li>Chọn <strong>Thư mục</strong> để duyệt danh sách tập, hoặc chọn <strong>PDF</strong> rồi nạp file <strong>MP3 tương ứng</strong>.</li>
+          <li>Nhấn <strong>Play</strong> để nghe; dùng các nút điều khiển để tua, lật trang hoặc đọc lại trang.</li>
+          <li>Ghim mốc thời gian cho từng trang nếu muốn tự động đồng bộ trang với âm thanh.</li>
+          <li>Dùng <strong>Menu</strong> để ẩn/hiện thanh chọn tệp và thanh mốc trang.</li>
+        </ol>
       </div>
     </div>
 
@@ -220,7 +205,7 @@
   <div id="node1Modal" class="modal-overlay hidden">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>📂 Chọn thư mục hoặc PDF</h3>
+        <h3>🚀 Bắt đầu</h3>
         <button id="btnCloseNode1Modal" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
