@@ -1495,3 +1495,50 @@ button:focus-visible, select:focus-visible, input:focus-visible, label.action-bt
   .audio-scrubber-row { margin-bottom: 6px; }
   .ctrl-btn, .ctrl-btn.play-btn, .ctrl-btn.speed-select { min-height: 38px; }
 }
+
+
+/* TINH GỌN CHỌN TỆP VÀ CÂN ĐỐI CÁC NÚT PHÁT */
+.header-right { gap: 8px; }
+#btnOpenPlaylist:disabled { opacity:.42; filter:saturate(.45); cursor:not-allowed; box-shadow:none; transform:none; }
+#btnOpenPlaylist:not(:disabled) { opacity:1; cursor:pointer; }
+.file-picker-card { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; }
+.file-picker-card > .btn-node-1 {
+  flex:0 1 auto; min-width:220px; font-weight:750;
+  background:linear-gradient(135deg,#2563eb,#0f766e);
+  border-color:rgba(125,211,252,.35);
+}
+.active-files-indicator { flex:1 1 280px; min-width:0; }
+.quick-options { flex:1 1 100%; justify-content:flex-start; margin-left:0; padding-top:8px; border-top:1px solid var(--ui-border); }
+#btnTriggerPdfPicker { margin-top:4px; }
+#btnTriggerFolderPicker,#btnTriggerPdfPicker { min-height:42px; }
+.speed-select-wrap { align-self:stretch; width:100%; max-width:74px; }
+.ctrl-btn.speed-select { min-height:34px; height:34px; padding:0 5px; border-radius:8px; font-size:.8rem; text-align:center; }
+.controls-row {
+  grid-template-columns:minmax(110px,1.2fr) minmax(48px,.58fr) minmax(72px,.9fr) minmax(48px,.58fr) minmax(110px,1.2fr) minmax(120px,1fr) 74px;
+  gap:clamp(5px,.65vw,9px);
+}
+.ctrl-btn.page-ctrl { min-height:50px; font-size:.95rem; font-weight:700; }
+.ctrl-btn.play-btn { min-height:50px; font-size:1.45rem; }
+.ctrl-btn:not(.page-ctrl):not(.play-btn):not(.speed-select):not(.replay-page-btn) { min-height:36px; padding:5px 6px; font-size:.8rem; }
+.replay-page-btn { min-height:36px; padding:5px 7px; gap:5px; font-size:.78rem; }
+.replay-page-icon { font-size:1.05rem; }
+@media (max-width:1100px) {
+  .controls-row { grid-template-columns:minmax(94px,1.2fr) minmax(44px,.55fr) minmax(66px,.8fr) minmax(44px,.55fr) minmax(94px,1.2fr) minmax(110px,1fr) 70px; }
+  .speed-select-wrap { max-width:70px; }
+}
+@media (max-width:760px) {
+  .file-picker-card { grid-template-columns:minmax(0,1fr); }
+  .file-picker-card > .btn-node-1 { width:100%; min-width:0; }
+  .quick-options { padding-top:8px; }
+  .controls-row { grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+  .ctrl-btn.page-ctrl { grid-column:span 2; min-height:48px; font-size:.92rem; }
+  .ctrl-btn.play-btn { min-height:48px; font-size:1.35rem; }
+  .ctrl-btn:not(.page-ctrl):not(.play-btn):not(.speed-select):not(.replay-page-btn) { min-height:34px; font-size:.76rem; }
+  .replay-page-btn { grid-column:span 2; min-height:34px; font-size:.76rem; }
+  .speed-select-wrap { grid-column:span 2; max-width:none; width:100%; display:flex; align-items:center; }
+  .ctrl-btn.speed-select { width:100%; height:34px; min-height:34px; }
+}
+@media (max-width:420px) {
+  .file-picker-card > .btn-node-1 { font-size:.8rem; }
+  .ctrl-btn.page-ctrl { font-size:.86rem; }
+}
