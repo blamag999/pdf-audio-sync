@@ -150,6 +150,7 @@ const dom = {
   txtPlaylistSearch: document.getElementById('txtPlaylistSearch'),
   playlistItemsList: document.getElementById('playlistItemsList'),
   playlistLoading: document.getElementById('playlistLoading'),
+  btnExportR2Catalog: document.getElementById('btnExportR2Catalog'),
 
   btnNode1FolderOnline: document.getElementById('btnNode1FolderOnline'),
   btnToggleSettings: document.getElementById('btnToggleSettings'),
@@ -592,6 +593,53 @@ async function loadR2Catalog() {
   }
 }
 
+function buildR2ObjectUrl(filename) {
+  const path = String(filename || '').split('/').map(segment => encodeURIComponent(segment)).join('/');
+  return R2_PUBLIC_BASE + '/' + path;
+}
+
+function exportR2CatalogFromPlaylist() {
+  const allStories = Array.isArray(state.playlist) ? state.playlist : [];
+  const pairedStories = allStories.filter(story =>
+    story && story.pdf && story.pdf.name && Array.isArray(story.audios) &&
+    story.audios.some(audio => audio && audio.name)
+  );
+
+  if (!pairedStories.length) {
+    alert('Chưa có sách nào đủ PDF và MP3 để xuất. Hãy chọn thư mục chứa sách trước.');
+    return;
+  }
+
+  const books = pairedStories.map(story => ({
+    id: story.id || getBookUniqueKey(story.pdf.name),
+    title: story.title || normalizeStoryTitle(story.pdf.name),
+    pdf: buildR2ObjectUrl(story.pdf.name),
+    audios: story.audios
+      .filter(audio => audio && audio.name)
+      .map(audio => buildR2ObjectUrl(audio.name)),
+    sync: story.json && story.json.name
+      ? buildR2ObjectUrl(story.json.name)
+      : null
+  }));
+
+  const catalog = { books };
+  const blob = new Blob([JSON.stringify(catalog, null, 2)], {
+    type: 'application/json;charset=utf-8'
+  });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = 'books.json';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+
+  const skipped = allStories.length - pairedStories.length;
+  showToast('Đã xuất books.json gồm ' + books.length + ' sách' +
+    (skipped > 0 ? '; bỏ qua ' + skipped + ' mục chưa đủ PDF và MP3.' : '.'));
+}
+
 function buildPlaylistFromItems(rawItems) {
   const groups = {};
   const jsonItems = [];
@@ -897,6 +945,8 @@ function initEvents() {
     if (state.playlist.length === 0) return;
     dom.playlistModal.classList.remove('hidden');
   });
+
+  if (dom.btnExportR2Catalog) dom.btnExportR2Catalog.addEventListener('click', exportR2CatalogFromPlaylist);
 
   dom.btnClosePlaylist.addEventListener('click', () => dom.playlistModal.classList.add('hidden'));
   dom.playlistModal.addEventListener('click', (e) => {
