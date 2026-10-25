@@ -528,15 +528,7 @@ async function resetAndLoadSyncForBook(bookKey, attachedJsonBlob, remoteSyncUrl 
 // XÂY DỰNG VÀ QUẢN LÝ DANH SÁCH TẬP TRUYỆN (PLAYLIST)
 // =======================================================
 // DANH MỤC SÁCH CÔNG KHAI TRÊN CLOUDFLARE R2
-const R2_PUBLIC_BASE = 'https://pub-763a3a5ae235415cbef15b64f7a20820.r2.dev';
-const R2_BOOKS_CATALOG_URL = R2_PUBLIC_BASE + '/books.json';
-const R2_STARTER_BOOKS = [{
-  id: '101_dalmations_read_along',
-  title: '101 Dalmations',
-  pdf: R2_PUBLIC_BASE + '/101_Dalmations_Read_Along.pdf',
-  audios: [R2_PUBLIC_BASE + '/101_Dalmations_Read_Along.mp3'],
-  sync: R2_PUBLIC_BASE + '/101_dalmations_read_along_sync.json'
-}];
+// Không lưu URL bucket hoặc danh sách sách mẫu cố định trong mã nguồn.
 
 function fileNameFromUrl(url, fallback) {
   try { return decodeURIComponent(new URL(url).pathname.split('/').pop()) || fallback; }
@@ -549,17 +541,26 @@ async function loadR2Catalog() {
   dom.playlistLoading.classList.remove('hidden');
   dom.playlistItemsList.replaceChildren();
   try {
-    let entries = null;
+    const catalogUrlInput = prompt('Nhập URL đầy đủ của books.json trên R2 (ví dụ: https://pub-xxxxxxxx.r2.dev/books.json):');
+    if (!catalogUrlInput || !catalogUrlInput.trim()) {
+      showToast('Đã hủy tải danh sách R2 vì chưa nhập URL.');
+      return;
+    }
+    let catalogUrl;
     try {
-      const response = await fetch(R2_BOOKS_CATALOG_URL, { cache: 'no-store' });
-      if (response.ok) {
-        const data = await response.json();
-        entries = Array.isArray(data) ? data : (data && Array.isArray(data.books) ? data.books : null);
+      catalogUrl = new URL(catalogUrlInput.trim());
+      if (catalogUrl.protocol !== 'https:' || !catalogUrl.pathname.toLowerCase().endsWith('/books.json')) {
+        throw new Error('URL phải là HTTPS và kết thúc bằng /books.json.');
       }
     } catch (error) {
-      console.info('Chưa đọc được books.json trên R2; dùng danh sách sách mẫu.', error);
+      alert('URL books.json không hợp lệ. ' + error.message);
+      return;
     }
-    if (!entries || !entries.length) entries = R2_STARTER_BOOKS;
+    const response = await fetch(catalogUrl.href, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Không tải được books.json (' + response.status + ').');
+    const data = await response.json();
+    const entries = Array.isArray(data) ? data : (data && Array.isArray(data.books) ? data.books : null);
+    if (!entries || !entries.length) throw new Error('books.json không có danh sách sách hợp lệ.');
     const stories = entries.filter(item => item && item.pdf && (item.audios || item.audio))
       .map(item => {
         const audioEntries = item.audios || item.audio || [];
