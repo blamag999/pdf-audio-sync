@@ -1,50 +1,58 @@
-# 📖 Hướng Dẫn Sử Dụng: App Đọc PDF & Khớp Audio (PDF Audio Sync)
+# PDF Audio Sync — Trình đọc PDF đồng bộ âm thanh
 
-Ứng dụng **PDF Audio Sync** được thiết kế chuyên biệt cho thiết bị di động (Android / iOS) và máy tính, giải quyết trọn vẹn nhu cầu vừa đọc sách/truyện PDF vừa nghe MP3 với khả năng **đồng bộ khớp mốc từng trang**.
+PDF Audio Sync là ứng dụng đọc tài liệu PDF và nghe MP3 tương ứng, hỗ trợ đồng bộ thời điểm phát âm thanh với từng trang PDF. Ứng dụng chạy trên trình duyệt máy tính và thiết bị di động.
 
----
+## Bắt đầu nhanh
 
-## 🌟 Các Tính Năng Nổi Bật
+1. Mở [PDF Audio Sync trên GitHub Pages](https://blamag999.github.io/pdf-audio-sync/).
+2. Nhấn **Bắt đầu**.
+3. Chọn một trong hai cách:
+   - **Chọn thư mục:** chọn thư mục có các tệp PDF/MP3. Ứng dụng quét và hiển thị danh sách tập để bạn chọn nghe.
+   - **Chọn PDF:** chọn tài liệu PDF, sau đó nhấn **Chọn MP3** để nạp tệp âm thanh tương ứng.
+4. Nhấn **Play** để bắt đầu nghe. Việc nạp tệp không tự động phát âm thanh.
+5. Dùng các nút chuyển trang, tua lùi/tới và đọc lại trang để điều khiển quá trình đọc.
 
-1. **Khớp mốc thời gian từng trang (Audio-Page Sync)**:
-   - Khi nghe audio đến đâu, bạn chỉ cần bấm **📍 Ghim mốc giây này cho trang**.
-   - Ứng dụng tự động lưu mốc tương ứng: Trang 1 (00:00), Trang 2 (01:45), Trang 3 (03:20)...
-2. **Tự động chuyển trang thông minh**:
-   - Khi MP3 chạy đến đúng thời điểm của trang kế tiếp, màn hình sẽ **tự động lật sang trang đó** mà không cần chạm tay.
-3. **Lật trang tự tua Audio**:
-   - Bấm nút lật trang hoặc vuốt tay sang trang khác, audio sẽ **tự động tua đến đúng đoạn đọc** của trang đó.
-4. **Hỗ trợ sách nhiều phần âm thanh (Multi-Part Audio)**:
-   - Tự động nhận diện và gộp các file `Part 1`, `Part 2`, `Side A`, `Side B` vào chung một đầu sách.
-   - Tự động chuyển tiếp mượt mà khi nghe hết một phần.
-5. **Chế độ hiển thị linh hoạt**:
-   - Chế độ **Vừa dọc**: Phù hợp đọc trên màn hình điện thoại.
-   - Chế độ **2 Trang song song**: Trải nghiệm như lật cuốn sách thật trên máy tính hoặc máy tính bảng.
-   - Phóng to / Thu nhỏ tùy chỉnh.
-6. **Mở tệp cục bộ**:
-   - **Thư mục thiết bị**: Mở thư mục cục bộ trên máy tính hoặc điện thoại.
-   - **Chỉ đọc tệp cục bộ**: Mở PDF và MP3 từ thư mục trên thiết bị; không tải nội dung sách từ nguồn trực tuyến.
-7. **Lưu trữ và đồng bộ mốc**:
-   - Tự động lưu mốc vào IndexedDB/LocalStorage của trình duyệt cho từng cuốn riêng biệt.
-   - Xuất file `.json` để sao lưu vào thư mục truyện hoặc đưa vào kho dữ liệu.
+## Hướng dẫn sử dụng
 
----
+### Chọn và mở nội dung
+- **Bắt đầu → Chọn thư mục:** phù hợp khi có nhiều tập truyện. Chọn thư mục chứa các tệp PDF và MP3; sau khi quét, mở **Danh sách tập** để chọn tập.
+- **Bắt đầu → Chọn PDF:** phù hợp khi chỉ đọc một tài liệu. Sau khi chọn PDF, cần chọn thêm file MP3 tương ứng bằng nút **Chọn MP3**.
+- Bạn cũng có thể kéo thả tệp PDF và MP3 vào vùng đọc nếu trình duyệt và thiết bị hỗ trợ thao tác này.
 
-## ☁️ Đồng bộ mốc đọc qua GitHub
+### Điều khiển đọc
+- **Play/Dừng:** phát hoặc tạm dừng âm thanh.
+- **Trang trước/Trang sau:** chuyển trang PDF.
+- **Tua lùi/Tua tới:** di chuyển âm thanh 5 giây.
+- **Đọc lại trang:** phát lại từ mốc thời gian của trang hiện tại (khi có mốc phù hợp).
+- **Tốc độ phát:** chọn tốc độ phù hợp.
+- **Vừa dọc / 2 Trang:** thay đổi cách hiển thị PDF; dùng nút phóng to/thu nhỏ để điều chỉnh kích thước.
 
-- Ứng dụng chỉ tải lên tệp JSON mốc thời gian; PDF và MP3 luôn nằm trên thiết bị.
-- Mốc được lưu trong `sync_data/<TênPDF>.json` để có thể tải lại trên thiết bị khác.
-- Khi mở PDF, ứng dụng ưu tiên JSON trong thư mục, sau đó tải mốc công khai trên GitHub trước dữ liệu cục bộ.
-- Để ghi mốc lên GitHub, bấm **Mốc khớp → Đồng bộ GitHub** và nhập Personal Access Token có quyền **Contents: Read and write** đối với repository `blamag999/pdf-audio-sync`.
-- Token chỉ được giữ trong phiên trình duyệt hiện tại; không chia sẻ token và không lưu token vào mã nguồn.
+### Chế độ đọc và đồng bộ mốc
+- **Tự động lật trang (theo mốc thời gian):** tự chuyển PDF sang trang kế tiếp khi âm thanh tới mốc đã đặt.
+- **Tự lật trang (dừng chờ lật trang):** dừng âm thanh tại mốc trang kế tiếp để bạn tự lật trang; nếu không có mốc hợp lệ cho trang kế tiếp, âm thanh tiếp tục chạy.
+- **Đọc liên tục:** phát âm thanh mà không tự dừng hoặc tự chuyển trang theo mốc.
+- **Lật trang tự tua:** khi bật, thao tác lật trang sẽ tua âm thanh đến mốc của trang đó nếu có.
+- **Ghim mốc giây này cho trang:** gán thời điểm âm thanh hiện tại cho trang đang mở. Hãy thiết lập mốc cho các trang cần đồng bộ.
 
-## 🚀 Cách Cài Đặt & Sử Dụng
+### Lưu và đồng bộ dữ liệu
+- Mốc thời gian được lưu cục bộ trong trình duyệt theo từng cuốn truyện.
+- Dùng **Lưu mốc** để lưu/xuất tệp mốc JSON về máy.
+- Trong **Mốc thời gian**, bạn có thể nhập hoặc xuất JSON, xóa mốc, hoặc đồng bộ mốc lên GitHub.
+- Đồng bộ GitHub chỉ tải lên dữ liệu JSON mốc; PDF và MP3 không được tải lên.
+- Để ghi dữ liệu vào repository, cần GitHub Personal Access Token có quyền **Contents: Read and write**. Token chỉ được giữ trong phiên trình duyệt hiện tại; không đưa token vào mã nguồn hoặc chia sẻ token.
 
-### Cách 1: Chạy cục bộ qua mạng Wi-Fi gia đình
-1. Trên máy tính, chạy tệp **`chay_server.bat`** (hoặc chạy lệnh `python server.py`).
-2. Trên điện thoại (kết nối cùng Wi-Fi với máy tính), mở trình duyệt Chrome và truy cập địa chỉ IP LAN hiển thị trên màn hình máy tính.
-3. Bấm vào biểu tượng **3 chấm [⋮]** trên trình duyệt Chrome -> chọn **"Cài đặt ứng dụng"** (Install App) hoặc **"Thêm vào màn hình chính"** (Add to Home screen) để sử dụng toàn màn hình.
+### Menu
+Nút **Menu** ở góc trên phải dùng để ẩn/hiện khu vực chọn tệp, tên tệp, số mốc, chế độ đọc, tùy chọn tự tua và thanh mốc trang phía dưới.
 
-### Cách 2: Triển khai lên Hosting cá nhân (GitHub Pages / Vercel / Cloudflare Pages)
-1. Tải toàn bộ mã nguồn lên kho lưu trữ GitHub của bạn.
-2. Bật **GitHub Pages** (hoặc liên kết tới Vercel/Cloudflare Pages).
-3. Mở đường link web của bạn trên bất kỳ thiết bị nào để đọc sách mọi lúc mọi nơi.
+## Lưu ý
+- Trình duyệt cần hỗ trợ chọn thư mục để sử dụng chức năng quét thư mục. Nếu không có, hãy chọn từng PDF và MP3.
+- PDF và MP3 vẫn nằm trên thiết bị của bạn khi sử dụng chức năng mở tệp cục bộ.
+- Nếu giao diện chưa cập nhật sau khi triển khai, hãy tải lại trang bằng **Ctrl + F5** hoặc đóng/mở lại ứng dụng.
+
+## Công nghệ
+- PDF.js để hiển thị tài liệu PDF.
+- IndexedDB/LocalStorage của trình duyệt để lưu dữ liệu cục bộ.
+- GitHub Contents API để đồng bộ tệp JSON mốc thời gian khi người dùng chủ động yêu cầu.
+
+## Repository
+https://github.com/blamag999/pdf-audio-sync
