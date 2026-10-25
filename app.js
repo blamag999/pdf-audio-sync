@@ -150,6 +150,8 @@ const dom = {
   playlistLoading: document.getElementById('playlistLoading'),
 
   btnNode1FolderOnline: document.getElementById('btnNode1FolderOnline'),
+  btnToggleSettings: document.getElementById('btnToggleSettings'),
+  btnChooseAudio: document.getElementById('btnChooseAudio'),
   folderInput: document.getElementById('folderInput'),
   pdfFileInput: document.getElementById('pdfFileInput'),
   audioFileInput: document.getElementById('audioFileInput'),
@@ -668,6 +670,15 @@ function initEvents() {
   });
 
   dom.btnNode1FolderOnline.addEventListener('click', () => dom.node1Modal.classList.remove('hidden'));
+  dom.btnToggleSettings.addEventListener('click', () => {
+    const willHide = !dom.filePickerSection.classList.contains('hidden');
+    dom.filePickerSection.classList.toggle('hidden', willHide);
+    dom.btnToggleSettings.setAttribute('aria-expanded', String(!willHide));
+    dom.btnToggleSettings.title = willHide
+      ? 'Hiện dòng chọn tệp và tùy chọn'
+      : 'Ẩn dòng chọn tệp và tùy chọn';
+  });
+  dom.btnChooseAudio.addEventListener('click', () => dom.audioFileInput.click());
   dom.btnCloseNode1Modal.addEventListener('click', () => dom.node1Modal.classList.add('hidden'));
   dom.node1Modal.addEventListener('click', (e) => {
     if (e.target === dom.node1Modal) dom.node1Modal.classList.add('hidden');
@@ -771,6 +782,7 @@ async function handlePdfFileSelect(e) {
 
   const key = getBookUniqueKey(file.name);
   state.currentBookKey = key;
+  dom.btnChooseAudio.classList.remove('hidden');
   state.pdfSelectionInProgress = true;
   state.currentStoryAudios = [];
   state.currentAudioIndex = 0;
@@ -781,9 +793,7 @@ async function handlePdfFileSelect(e) {
   dom.audioFileName.classList.add('empty');
   updateAudioPartUI();
 
-  // Mở hộp thoại MP3 ngay trong sự kiện chọn PDF để trình duyệt cho phép.
-  dom.audioFileInput.click();
-
+  // Không tự mở hộp thoại MP3; người dùng chủ động bấm nút "Chọn MP3".
   try {
     await loadPdfFromBlob(file, true);
     saveBookToLibrary({
@@ -828,6 +838,7 @@ async function handleAudioFileSelect(e) {
   // Cập nhật danh sách audio đang mở vào state
   state.currentStoryAudios = audioItems;
   state.currentAudioIndex = 0;
+  if (state.pdfDoc) dom.btnChooseAudio.classList.remove('hidden');
 
   // Nạp part đầu tiên và hiển thị thanh chọn part
   loadAudioPart(0);
