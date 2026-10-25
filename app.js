@@ -20,7 +20,7 @@ const state = {
 
   // Mốc thời gian: { [pageNumber]: timestampInSeconds } (CHỈ DÀNH RIÊNG CHO CUỐN HIỆN TẠI)
   pageTimestamps: {},
-  autoPageTurn: true,
+  pageTurnMode: 'markers', // markers | next | off
   autoSeekAudio: true,
   isAudioDrivenChange: false,
 
@@ -28,8 +28,8 @@ const state = {
   viewMode: 'fit-height',
   zoomScale: 1.0,
 
-  speeds: [0.75, 1.0, 1.25, 1.5, 1.75, 2.0],
-  speedIndex: 1,
+  speeds: [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0],
+  speedIndex: 2,
 
   // MULTI-AUDIO STATE
   currentAudioIndex: 0,   // Phần âm thanh đang phát trong currentStoryAudios
@@ -178,6 +178,8 @@ const dom = {
 
   lblPagePrefix: document.getElementById('lblPagePrefix'),
   lblCurrentPage: document.getElementById('lblCurrentPage'),
+  pageJumpInput: document.getElementById('pageJumpInput'),
+  btnPageJump: document.getElementById('btnPageJump'),
   lblTotalPages: document.getElementById('lblTotalPages'),
   lblPageTimestamp: document.getElementById('lblPageTimestamp'),
   lblSaveStatus: document.getElementById('lblSaveStatus'),
@@ -193,9 +195,9 @@ const dom = {
   btnPlayPause: document.getElementById('btnPlayPause'),
   btnRewind5: document.getElementById('btnRewind5'),
   btnForward5: document.getElementById('btnForward5'),
-  btnSpeed: document.getElementById('btnSpeed'),
-
-  chkAutoPageTurn: document.getElementById('chkAutoPageTurn'),
+  speedSelect: document.getElementById('speedSelect'),
+  btnReplayPage: document.getElementById('btnReplayPage'),
+  selPageTurnMode: document.getElementById('selPageTurnMode'),
   chkAutoSeekAudio: document.getElementById('chkAutoSeekAudio'),
 
   btnOpenSyncModal: document.getElementById('btnOpenSyncModal'),
@@ -688,8 +690,18 @@ function initEvents() {
     dom.filePickerSection.classList.toggle('collapsed');
   });
 
-  dom.chkAutoPageTurn.addEventListener('change', (e) => { state.autoPageTurn = e.target.checked; });
+  dom.selPageTurnMode.value = state.pageTurnMode;
+  dom.selPageTurnMode.addEventListener('change', (e) => {
+    state.pageTurnMode = e.target.value;
+    showToast(state.pageTurnMode === 'markers' ? 'Lật trang theo mốc audio' : state.pageTurnMode === 'next' ? 'Tự lật khi đến mốc trang kế tiếp' : 'Đã tắt tự lật trang');
+  });
   dom.chkAutoSeekAudio.addEventListener('change', (e) => { state.autoSeekAudio = e.target.checked; });
+  dom.btnPageJump.addEventListener('click', jumpToEnteredPage);
+  dom.pageJumpInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') jumpToEnteredPage(); });
+  dom.btnReplayPage.addEventListener('click', replayCurrentPage);
+  dom.speedSelect.addEventListener('change', (e) => setPlaybackSpeed(parseFloat(e.target.value), true));
+  initPlaybackSpeed();
+  initPdfClickNavigation();
 
   dom.btnPrevPage.addEventListener('click', () => changePage(-1));
   dom.btnNextPage.addEventListener('click', () => changePage(1));
@@ -704,8 +716,6 @@ function initEvents() {
   dom.btnForward5.addEventListener('click', () => {
     dom.audioElement.currentTime = Math.min(dom.audioElement.duration || 0, dom.audioElement.currentTime + 5);
   });
-  dom.btnSpeed.addEventListener('click', cycleSpeed);
-
   dom.audioElement.addEventListener('timeupdate', onAudioTimeUpdate);
   dom.audioElement.addEventListener('loadedmetadata', onAudioMetadataLoaded);
   dom.audioElement.addEventListener('play', () => { dom.btnPlayPause.textContent = '⏸'; });
@@ -920,6 +930,7 @@ async function loadPdfFromBlob(file, shouldResetSync = true) {
 
 function loadAudioFromBlob(file) {
   state.audioFileName = file.name;
+  dom.audioElement.playbackRate = state.speeds[state.speedIndex] || 1.0;
   dom.audioFileName.textContent = `🎵 ${file.name}`;
   dom.audioFileName.classList.remove('empty');
 
@@ -1180,11 +1191,82 @@ function togglePlayPause() {
   }
 }
 
-function cycleSpeed() {
-  state.speedIndex = (state.speedIndex + 1) % state.speeds.length;
-  const newSpeed = state.speeds[state.speedIndex];
-  dom.audioElement.playbackRate = newSpeed;
-  dom.btnSpeed.textContent = `${newSpeed}x`;
+const PLAYBACK_SPEED_STORAGE_KEY = 'pdfAudioSyncPlaybackSpeed';
+function setPlaybackSpeed(speed, persist = false) {
+  const safeSpeed = state.speeds.includes(speed) ? speed : 1.0;
+  state.speedIndex = state.speeds.indexOf(safeSpeed);
+  dom.audioElement.playbackRate = safeSpeed;
+  dom.speedSelect.value = String(safeSpeed);
+  if (persist) {
+    try { localStorage.setItem(PLAYBACK_SPEED_STORAGE_KEY, String(safeSpeed)); } catch (e) {}
+  }
+}
+function initPlaybackSpeed() {
+  let savedSpeed = 1.0;
+  try {
+    const stored = parseFloat(localStorage.getItem(PLAYBACK_SPEED_STORAGE_KEY));
+    if (state.speeds.includes(stored)) savedSpeed = stored;
+  } catch (e) {}
+  setPlaybackSpeed(savedSpeed);
+}
+function jumpToEnteredPage() {
+  if (!state.pdfDoc) { showToast('Vui lòng mở PDF trước.'); return; }
+  const raw = dom.pageJumpInput.value.trim();
+  const target = Number(raw);
+  if (!raw || !Number.isInteger(target) || target < 1 || target > state.totalPages) {
+    showToast('Nhập số trang từ 1 đến ' + state.totalPages + '.');
+    dom.pageJumpInput.focus();
+    return;
+  }
+  state.pageNum = state.viewMode === 'two-pages' ? (target % 2 === 0 ? Math.max(1, target - 1) : target) : target;
+  state.isAudioDrivenChange = false;
+  renderCurrentSpread();
+  dom.pageJumpInput.value = '';
+}
+function getCurrentPageTimestamp(page) {
+  const raw = state.pageTimestamps[page];
+  if (typeof raw === 'number' && Number.isFinite(raw)) return { time: raw, part: 0 };
+  if (raw && typeof raw === 'object' && Number.isFinite(raw.time)) {
+    return { time: raw.time, part: Number.isInteger(raw.part) ? raw.part : 0 };
+  }
+  return null;
+}
+function replayCurrentPage() {
+  if (!state.pdfDoc) { showToast('Vui lòng mở PDF trước.'); return; }
+  const marker = getCurrentPageTimestamp(state.pageNum);
+  if (!marker) { showToast('Trang hiện tại chưa có mốc thời gian.'); return; }
+  if (!dom.audioElement.src && !(state.currentStoryAudios && state.currentStoryAudios.length)) {
+    showToast('Vui lòng mở tệp MP3 trước.');
+    return;
+  }
+  const seekAndPlay = () => {
+    dom.audioElement.currentTime = Math.max(0, marker.time);
+    dom.audioElement.playbackRate = state.speeds[state.speedIndex] || 1;
+    dom.audioElement.play().catch(() => showToast('Không thể phát audio. Hãy bấm Phát để thử lại.'));
+  };
+  if (state.currentStoryAudios && state.currentStoryAudios.length > 1 &&
+      marker.part !== state.currentAudioIndex && state.currentStoryAudios[marker.part]) {
+    dom.audioElement.pause();
+    dom.audioElement.addEventListener('loadedmetadata', function onReplayMetadata() {
+      dom.audioElement.removeEventListener('loadedmetadata', onReplayMetadata);
+      seekAndPlay();
+    }, { once: true });
+    loadAudioPart(marker.part);
+  } else {
+    seekAndPlay();
+  }
+}
+function initPdfClickNavigation() {
+  dom.canvasWrapper.addEventListener('click', (event) => {
+    if (!state.pdfDoc || event.button !== 0 || event.target.tagName !== 'CANVAS') return;
+    const canvas = event.target;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width) return;
+    const direction = state.viewMode === 'two-pages'
+      ? (canvas.id === 'pdfCanvasLeft' ? -1 : 1)
+      : ((event.clientX - rect.left) < rect.width / 2 ? -1 : 1);
+    changePage(direction);
+  });
 }
 
 function onAudioMetadataLoaded() {
@@ -1198,39 +1280,31 @@ function onAudioTimeUpdate() {
   dom.audioSeeker.value = curr;
   dom.lblAudioCurrentTime.textContent = formatTime(curr);
 
-  if (state.autoPageTurn && state.pdfDoc && Object.keys(state.pageTimestamps).length > 0) {
-    let matchedPage = null;
-    let maxTime = -1;
-
-    for (const [pageStr, rawTs] of Object.entries(state.pageTimestamps)) {
-      const p = parseInt(pageStr, 10);
-      const isObj = (rawTs && typeof rawTs === 'object');
-      const timestamp = isObj ? rawTs.time : rawTs;
-      const part = isObj ? (rawTs.part || 0) : 0;
-
-      // Nếu truyện có nhiều phần âm thanh, chỉ khớp trang thuộc phần đang phát
-      if (state.currentStoryAudios && state.currentStoryAudios.length > 1 && part !== state.currentAudioIndex) {
-        continue;
+  if (state.pageTurnMode !== 'off' && state.pdfDoc && Object.keys(state.pageTimestamps).length > 0) {
+    const currentPart = state.currentAudioIndex || 0;
+    const matchesCurrentPart = (marker) =>
+      !state.currentStoryAudios || state.currentStoryAudios.length <= 1 || marker.part === currentPart;
+    let targetPage = null;
+    if (state.pageTurnMode === 'markers') {
+      let maxTime = -1;
+      for (const pageStr of Object.keys(state.pageTimestamps)) {
+        const page = parseInt(pageStr, 10);
+        const marker = getCurrentPageTimestamp(page);
+        if (!marker || !matchesCurrentPart(marker)) continue;
+        if (curr >= marker.time && marker.time > maxTime) { maxTime = marker.time; targetPage = page; }
       }
-
-      if (curr >= timestamp && timestamp > maxTime) {
-        maxTime = timestamp;
-        matchedPage = p;
-      }
+      if (targetPage !== null && state.viewMode === 'two-pages' && targetPage % 2 === 0) targetPage -= 1;
+    } else {
+      const step = state.viewMode === 'two-pages' ? 2 : 1;
+      const nextPage = state.pageNum + step;
+      const nextMarker = getCurrentPageTimestamp(nextPage);
+      if (nextPage <= state.totalPages && nextMarker && matchesCurrentPart(nextMarker) && curr >= nextMarker.time) targetPage = nextPage;
     }
-
-    if (matchedPage) {
-      let shouldTurn = false;
-      if (state.viewMode === 'two-pages') {
-        const inCurrentSpread = (matchedPage === state.pageNum || matchedPage === state.pageNum + 1);
-        if (!inCurrentSpread) shouldTurn = true;
-      } else {
-        if (matchedPage !== state.pageNum) shouldTurn = true;
-      }
-
-      if (shouldTurn) {
+    if (targetPage !== null) {
+      const inCurrentSpread = state.viewMode === 'two-pages' && (targetPage === state.pageNum || targetPage === state.pageNum + 1);
+      if (targetPage !== state.pageNum && !inCurrentSpread) {
         state.isAudioDrivenChange = true;
-        state.pageNum = matchedPage;
+        state.pageNum = targetPage;
         renderCurrentSpread();
         setTimeout(() => { state.isAudioDrivenChange = false; }, 400);
       }
