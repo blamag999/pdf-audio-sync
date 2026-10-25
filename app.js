@@ -568,8 +568,6 @@ function loadAudioPart(index) {
   const audio = audios[clampedIdx];
   if (audio.blob) {
     loadAudioFromBlob(audio.blob);
-  } else if (audio.url) {
-    // Remote audio loading disabled.
   }
   updateAudioPartUI();
 }
@@ -622,7 +620,7 @@ function initEvents() {
 
   dom.btnOpenPlaylist.addEventListener('click', () => {
     if (state.playlist.length === 0) {
-      alert('Chưa có danh sách truyện. Vui lòng bấm Nút 1 để chọn thư mục trên máy hoặc dán link Google Drive!');
+      alert('Chưa có danh sách truyện. Vui lòng chọn thư mục trên máy hoặc mở file PDF/MP3.');
       return;
     }
     dom.playlistModal.classList.remove('hidden');
@@ -871,49 +869,6 @@ function handleFileList(files) {
   } else {
     alert('Không tìm thấy file PDF hoặc MP3 nào trong thư mục!');
   }
-}
-
-// =======================================================
-// XỬ LÝ NÚT 1: DÁN LINK THƯ MỤC HOẶC FILE GOOGLE DRIVE
-// =======================================================
-  const inputUrl = dom.txtOnlineFolder.value.trim();
-  const audioUrl = dom.txtOnlineAudio.value.trim();
-
-  if (!inputUrl && !audioUrl) {
-    alert('Vui lòng nhập link thư mục hoặc file Google Drive!');
-    return;
-  }
-
-  dom.node1Modal.classList.add('hidden');
-
-  if (inputUrl.includes('/folders/')) {
-    saveRecentOnlineLink(inputUrl, '📁 Thư mục Google Drive');
-    await parseGoogleDriveFolderUrl(inputUrl);
-    return;
-  }
-
-  if (inputUrl) {
-    await loadPdfFromUrl(inputUrl, true);
-  }
-  if (audioUrl) {
-    loadAudioFromUrl(audioUrl);
-  }
-  saveRecentOnlineLink(inputUrl, audioUrl);
-}
-
-function convertGoogleDriveUrl(rawUrl) {
-  if (!rawUrl) return '';
-  const url = rawUrl.trim();
-  let fileId = null;
-  const match1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (match1 && match1[1]) fileId = match1[1];
-  else if (match2 && match2[1]) fileId = match2[1];
-
-  if (fileId) {
-    return `https://drive.google.com/uc?export=download&id=${fileId}`;
-  }
-  return url;
 }
 
 async function loadPdfFromBlob(file, shouldResetSync = true) {
