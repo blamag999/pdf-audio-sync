@@ -56,7 +56,43 @@ body {
   white-space: nowrap;
 }
 
-/* VIEW CONTROLS */
+.btn-node-r2 {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
+  border: 1px solid #fb923c;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-node-r2:hover {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  transform: translateY(-1px);
+}
+
+.option-r2-block {
+  border-left: 4px solid #f97316;
+  background: rgba(249, 115, 22, 0.05);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  margin-top: 10px;
+}
+
+.btn-r2-action {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+  border-color: #fb923c !important;
+}
+
+.card-cover {
+  width: 48px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-right: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0f172a;
+}
+
 .view-controls-bar {
   display: flex;
   align-items: center;

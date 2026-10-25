@@ -1,0 +1,17 @@
+[
+  {
+    "id": "sample_story_01",
+    "title": "Truyện mẫu 01 (Cloudflare R2 Demo)",
+    "coverUrl": "",
+    "pdfUrl": "https://pub-763a3a5ae235415cbef15b64f7a20820.r2.dev/books/sample/book.pdf",
+    "audioUrl": "https://pub-763a3a5ae235415cbef15b64f7a20820.r2.dev/books/sample/audio.mp3",
+    "audios": [
+      {
+        "name": "audio.mp3",
+        "url": "https://pub-763a3a5ae235415cbef15b64f7a20820.r2.dev/books/sample/audio.mp3",
+        "partLabel": "Part 1"
+      }
+    ],
+    "syncUrl": "https://pub-763a3a5ae235415cbef15b64f7a20820.r2.dev/books/sample/sync.json"
+  }
+]

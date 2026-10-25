@@ -146,6 +146,7 @@ const dom = {
   playlistLoading: document.getElementById('playlistLoading'),
 
   btnNode1FolderOnline: document.getElementById('btnNode1FolderOnline'),
+  btnOpenR2Library: document.getElementById('btnOpenR2Library'),
   folderInput: document.getElementById('folderInput'),
   pdfFileInput: document.getElementById('pdfFileInput'),
   audioFileInput: document.getElementById('audioFileInput'),
@@ -156,6 +157,8 @@ const dom = {
   txtOnlineFolder: document.getElementById('txtOnlineFolder'),
   txtOnlineAudio: document.getElementById('txtOnlineAudio'),
   btnLoadOnlineLinks: document.getElementById('btnLoadOnlineLinks'),
+  txtR2CatalogUrl: document.getElementById('txtR2CatalogUrl'),
+  btnLoadR2Catalog: document.getElementById('btnLoadR2Catalog'),
   onlineHistorySection: document.getElementById('onlineHistorySection'),
   onlineHistoryList: document.getElementById('onlineHistoryList'),
 
@@ -506,7 +509,13 @@ function renderPlaylistView() {
       audioPartBtnsHtml += '</div>';
     }
 
+    let coverHtml = '';
+    if (story.coverUrl) {
+      coverHtml = `<img src="${story.coverUrl}" class="card-cover" alt="Bìa" loading="lazy" onerror="this.style.display='none'">`;
+    }
+
     card.innerHTML =
+      coverHtml +
       '<div class="card-title-col">' +
         '<h4>' + (isPlaying ? '&#9654; ' : '') + story.title + '</h4>' +
         '<div class="card-tags">' + tagsHtml + '</div>' +
@@ -539,9 +548,20 @@ async function loadStoryFromPlaylist(story, audioPartIndex) {
   state.currentStoryAudios = story.audios || [];
   state.currentAudioIndex = (typeof audioPartIndex === 'number') ? audioPartIndex : 0;
 
-  // 1. Reset va nap moc rieng cua cuon nay
-  const jsonBlob = story.json ? story.json.blob : null;
-  await resetAndLoadSyncForBook(uniqueKey, jsonBlob);
+    // 1. Reset va nap moc rieng cua cuon nay
+    let jsonBlob = story.json ? story.json.blob : null;
+    if (!jsonBlob && story.syncUrl) {
+      try {
+        const syncRes = await fetch(story.syncUrl);
+        if (syncRes.ok) {
+          const syncJson = await syncRes.json();
+          jsonBlob = new Blob([JSON.stringify(syncJson)], { type: 'application/json' });
+        }
+      } catch (e) {
+        console.log('Không thể tải file sync tự động từ R2:', e);
+      }
+    }
+    await resetAndLoadSyncForBook(uniqueKey, jsonBlob);
 
   // 2. Nap PDF
   if (story.pdf) {
@@ -612,8 +632,99 @@ window.selectAudioPart = function(index) {
 // =======================================================
 // QUÉT THƯ MỤC GOOGLE DRIVE
 // =======================================================
-// QUET THU MUC GOOGLE DRIVE
 // =======================================================
+// TẢI VÀ NẠP DANH MỤC TỪ CLOUDFLARE R2 (CATALOG BOOKS.JSON)
+// =======================================================
+async function loadR2Catalog(catalogUrl) {
+  const url = (catalogUrl || dom.txtR2CatalogUrl.value || '').trim();
+  if (!url) {
+    alert('Vui lòng nhập đường dẫn file books.json của Cloudflare R2!');
+    return false;
+  }
+
+  dom.lblLoadingText.textContent = 'Đang tải thư viện sách từ Cloudflare R2...';
+  dom.pdfLoadingIndicator.classList.remove('hidden');
+
+  try {
+    let response;
+    try {
+      response = await fetch(url);
+    } catch (e) {
+      // Thử dùng cors proxy nếu R2 chưa bật CORS
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+      response = await fetch(proxyUrl);
+    }
+
+    if (!response || !response.ok) {
+      throw new Error(`Không thể kết nối đến Cloudflare R2 (Mã lỗi: ${response ? response.status : 'Network error'})`);
+    }
+
+    const books = await response.json();
+    dom.pdfLoadingIndicator.classList.add('hidden');
+
+    if (!Array.isArray(books) || books.length === 0) {
+      alert('Không tìm thấy danh sách sách nào trong file books.json!');
+      return false;
+    }
+
+    // Format các cuốn sách đưa vào playlist của ứng dụng
+    const playlistArray = books.map(b => {
+      const id = b.id || getBookUniqueKey(b.title || 'story');
+      const title = b.title || 'Truyện không tên';
+
+      let audios = [];
+      if (Array.isArray(b.audios) && b.audios.length > 0) {
+        audios = b.audios.map((a, i) => ({
+          name: a.name || `Part ${i + 1}`,
+          url: a.url,
+          partLabel: a.partLabel || (b.audios.length > 1 ? `Part ${i + 1}` : null)
+        }));
+      } else if (b.audioUrl) {
+        audios = [{
+          name: `${title}.mp3`,
+          url: b.audioUrl,
+          partLabel: null
+        }];
+      }
+
+      const pdf = b.pdfUrl ? {
+        name: `${title}.pdf`,
+        url: b.pdfUrl
+      } : null;
+
+      return {
+        id: id,
+        title: title,
+        pdf: pdf,
+        audios: audios,
+        syncUrl: b.syncUrl || '',
+        coverUrl: b.coverUrl || b.cover || '',
+        json: null
+      };
+    });
+
+    state.playlist = playlistArray;
+    updatePlaylistBadgeCount();
+    renderPlaylistView();
+
+    dom.lblPlaylistSubtitle = document.getElementById('lblPlaylistSubtitle');
+    if (dom.lblPlaylistSubtitle) {
+      dom.lblPlaylistSubtitle.textContent = `Thư viện Cloudflare R2: ${playlistArray.length} cuốn sách`;
+    }
+    dom.playlistModal.classList.remove('hidden');
+    showToast(`⚡ Đã tải ${playlistArray.length} cuốn sách từ Cloudflare R2!`);
+
+    // Lưu vào lịch sử mở
+    saveRecentOnlineLink(url, '⚡ Thư viện Cloudflare R2');
+
+    return true;
+  } catch (err) {
+    dom.pdfLoadingIndicator.classList.add('hidden');
+    alert(`Lỗi khi nạp thư viện R2: ${err.message}\n\nMẹo:\n1. Đảm bảo file books.json đã được tải lên Bucket R2.\n2. Kiểm tra đã cấu hình CORS trên Cloudflare R2 Bucket.`);
+    return false;
+  }
+}
+
 
 function extractGDriveFolderId(url) {
   const m = url.match(/\/folders\/([a-zA-Z0-9_-]{10,})/);
@@ -767,6 +878,19 @@ function initEvents() {
   });
   dom.folderInput.addEventListener('change', (e) => handleFileList(Array.from(e.target.files)));
   dom.btnLoadOnlineLinks.addEventListener('click', handleLoadOnlineSubmit);
+
+  if (dom.btnLoadR2Catalog) {
+    dom.btnLoadR2Catalog.addEventListener('click', () => {
+      dom.node1Modal.classList.add('hidden');
+      loadR2Catalog();
+    });
+  }
+
+  if (dom.btnOpenR2Library) {
+    dom.btnOpenR2Library.addEventListener('click', () => {
+      loadR2Catalog();
+    });
+  }
 
   dom.pdfFileInput.addEventListener('change', handlePdfFileSelect);
   dom.audioFileInput.addEventListener('change', handleAudioFileSelect);

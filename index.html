@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
@@ -59,11 +59,16 @@
   <section id="filePickerSection" class="file-picker-section">
     <div class="file-picker-card">
       
-      <!-- NÚT 1: THƯ MỤC NỘI DUNG (MÁY HOẶC GOOGLE DRIVE ONLINE) -->
-      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" title="Mở thư mục trên máy hoặc link Google Drive online">
-        📁 Nút 1: Thư mục / Drive
+      <!-- NÚT 1: THƯ MỤC NỘI DUNG (MÁY, GOOGLE DRIVE HOẶC R2 CLOUD) -->
+      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" title="Mở thư mục máy, Google Drive hoặc Thư viện Cloud R2">
+        📁 Nút 1: Thư mục / Drive / R2
       </button>
       <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
+
+      <!-- NÚT MỞ NHANH THƯ VIỆN CLOUDFLARE R2 -->
+      <button id="btnOpenR2Library" class="action-btn btn-node-r2" title="Mở thư viện sách Cloudflare R2 Online">
+        ⚡ Thư viện R2 Cloud
+      </button>
 
       <!-- NÚT 2: CHỌN FILE PDF (TỰ ĐỘNG MỞ MP3 VÀ MỐC NẾU ĐÃ TỪNG MỞ) -->
       <label for="pdfFileInput" class="action-btn btn-node-2" title="Chọn file PDF truyện (Tự động nạp MP3 và mốc nếu đã từng mở)">
@@ -257,9 +262,24 @@
             </button>
           </div>
 
-          <div id="onlineHistorySection" class="history-section hidden">
-            <h4>🕒 Thư mục Drive mở gần đây:</h4>
-            <div id="onlineHistoryList" class="history-list"></div>
+        <div class="divider-text">HOẶC</div>
+
+        <!-- LỰA CHỌN C: THƯ VIỆN CLOUDFLARE R2 -->
+        <div class="option-block option-r2-block">
+          <h4>⚡ Cách C: Thư viện Online Cloudflare R2</h4>
+          <div class="guide-box">
+            <p><b>🚀 Tải siêu tốc:</b> Đọc sách PDF và nghe Audio trực tiếp từ kho Cloudflare R2 với tốc độ cao, hỗ trợ tự khớp mốc và chạy mượt mà.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="txtR2CatalogUrl">🔗 Đường dẫn danh mục sách R2 (catalog books.json):</label>
+            <input type="text" id="txtR2CatalogUrl" class="text-input" placeholder="https://pub-763a3a5ae235415cbef15b64f7a20820.r2.dev/books.json" value="https://pub-763a3a5ae235415cbef15b64f7a20820.r2.dev/books.json">
+          </div>
+
+          <div class="modal-actions-right">
+            <button id="btnLoadR2Catalog" class="btn-primary-large btn-r2-action">
+              ⚡ Tải thư viện sách từ Cloudflare R2
+            </button>
           </div>
         </div>
       </div>
