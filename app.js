@@ -32,7 +32,7 @@ const state = {
   speedIndex: 1,
 
   // MULTI-AUDIO STATE
-  currentAudioIndex: 0,   // Part dang phat trong currentStoryAudios
+  currentAudioIndex: 0,   // Phần âm thanh đang phát trong currentStoryAudios
   currentStoryAudios: []  // Danh sách các phần âm thanh của truyện đang mở
 };
 
@@ -387,7 +387,7 @@ function buildPlaylistFromItems(rawItems) {
     } else if (item.type === 'audio') {
       const partMatch = item.name.match(/part[_\s-]*(\d+)|side[_\s-]*([ab])|disc[_\s-]*(\d+)|\b(\d+)\s*of\s*\d+/i);
       item.partLabel = partMatch
-        ? (partMatch[1] ? ('Part ' + partMatch[1]) : partMatch[2] ? ('Side ' + partMatch[2].toUpperCase()) : partMatch[3] ? ('Disc ' + partMatch[3]) : ('Part ' + partMatch[4]))
+        ? (partMatch[1] ? ('Phần ' + partMatch[1]) : partMatch[2] ? ('Mặt ' + partMatch[2].toUpperCase()) : partMatch[3] ? ('Đĩa ' + partMatch[3]) : ('Phần ' + partMatch[4]))
         : null;
       groups[key].audios.push(item);
     }
@@ -423,7 +423,7 @@ function buildPlaylistFromItems(rawItems) {
     // Gan label mac dinh neu chua co
     if (story.audios.length > 1) {
       story.audios.forEach(function(aud, i) {
-        if (!aud.partLabel) aud.partLabel = 'Part ' + (i + 1);
+        if (!aud.partLabel) aud.partLabel = 'Phần ' + (i + 1);
       });
     }
   });
@@ -501,7 +501,7 @@ function renderPlaylistView() {
     if (story.audios && story.audios.length > 1) {
       audioPartBtnsHtml = '<div class="card-audio-parts">';
       story.audios.forEach(function(a, i) {
-        var lbl = a.partLabel || ('Part ' + (i + 1));
+        var lbl = a.partLabel || ('Phần ' + (i + 1));
         audioPartBtnsHtml += '<button class="card-part-btn" data-partidx="' + i + '" title="' + a.name + '">' + lbl + '</button>';
       });
       audioPartBtnsHtml += '</div>';
@@ -612,7 +612,7 @@ function updateAudioPartUI() {
   container.classList.remove('hidden');
   var html = '<span class="audio-part-label">Phan audio:</span>';
   audios.forEach(function(a, i) {
-    var lbl = a.partLabel || ('Part ' + (i + 1));
+    var lbl = a.partLabel || ('Phần ' + (i + 1));
     var isActive = (i === state.currentAudioIndex) ? ' active' : '';
     html += '<button class="audio-part-btn' + isActive + '" onclick="selectAudioPart(' + i + ')" title="' + a.name + '">' + lbl + '</button>';
   });
@@ -755,7 +755,7 @@ async function handlePdfFileSelect(e) {
       state.currentAudioIndex = 0;
       loadAudioPart(0);
       updateAudioPartUI();
-      showToast(`⚡ Đã tự động nạp ${saved.audios.length} part MP3!`);
+      showToast(`⚡ Đã tự động nạp ${saved.audios.length} phần MP3!`);
     } else if (saved.audioBlob) {
       state.currentStoryAudios = [{ name: saved.audioName || file.name, blob: saved.audioBlob }];
       state.currentAudioIndex = 0;
@@ -783,7 +783,7 @@ async function handleAudioFileSelect(e) {
   const audioItems = files.map(f => {
     const partMatch = f.name.match(/part[_\s-]*(\d+)|side[_\s-]*([ab])|disc[_\s-]*(\d+)|\b(\d+)\s*of\s*\d+/i);
     const partLabel = partMatch
-      ? (partMatch[1] ? ('Part ' + partMatch[1]) : partMatch[2] ? ('Side ' + partMatch[2].toUpperCase()) : partMatch[3] ? ('Disc ' + partMatch[3]) : ('Part ' + partMatch[4]))
+      ? (partMatch[1] ? ('Phần ' + partMatch[1]) : partMatch[2] ? ('Mặt ' + partMatch[2].toUpperCase()) : partMatch[3] ? ('Đĩa ' + partMatch[3]) : ('Phần ' + partMatch[4]))
       : null;
     return {
       name: f.name,
@@ -796,7 +796,7 @@ async function handleAudioFileSelect(e) {
   audioItems.sort((a, b) => a.name.localeCompare(b.name, 'vi', { numeric: true }));
   if (audioItems.length > 1) {
     audioItems.forEach((aud, i) => {
-      if (!aud.partLabel) aud.partLabel = 'Part ' + (i + 1);
+      if (!aud.partLabel) aud.partLabel = 'Phần ' + (i + 1);
     });
   }
 
@@ -809,7 +809,7 @@ async function handleAudioFileSelect(e) {
   updateAudioPartUI();
 
   if (audioItems.length > 1) {
-    showToast(`🎵 Đã nạp ${audioItems.length} part audio!`);
+    showToast(`🎵 Đã nạp ${audioItems.length} phần âm thanh!`);
   }
 
   // Tìm kiếm PDF tương ứng nếu chưa mở PDF
@@ -1081,7 +1081,7 @@ function updatePageTimestampBadge() {
     dom.lblPageTimestamp.textContent = 'Mốc: ' + formatTime(ts);
     dom.lblPageTimestamp.style.color = '#38bdf8';
   } else if (ts && typeof ts === 'object' && typeof ts.time === 'number') {
-    const partTxt = (ts.part !== undefined) ? (' (Part ' + (ts.part + 1) + ')') : '';
+    const partTxt = (ts.part !== undefined) ? (' (Phần ' + (ts.part + 1) + ')') : '';
     dom.lblPageTimestamp.textContent = 'Mốc: ' + formatTime(ts.time) + partTxt;
     dom.lblPageTimestamp.style.color = '#38bdf8';
   } else {
@@ -1208,7 +1208,7 @@ function onAudioTimeUpdate() {
       const timestamp = isObj ? rawTs.time : rawTs;
       const part = isObj ? (rawTs.part || 0) : 0;
 
-      // Nếu truyện có nhiều part audio, chỉ khớp trang thuộc part audio đang phát
+      // Nếu truyện có nhiều phần âm thanh, chỉ khớp trang thuộc phần đang phát
       if (state.currentStoryAudios && state.currentStoryAudios.length > 1 && part !== state.currentAudioIndex) {
         continue;
       }
@@ -1265,7 +1265,7 @@ function renderSyncTable() {
     const hasTime = (typeof rawTs === 'number') || (rawTs && typeof rawTs === 'object' && typeof rawTs.time === 'number');
     const sec = typeof rawTs === 'number' ? rawTs : (hasTime ? rawTs.time : 0);
     const partNum = (hasTime && rawTs && rawTs.part !== undefined) ? rawTs.part : null;
-    const partTxt = (partNum !== null) ? (' <span style="font-size:0.75rem;color:#38bdf8;">(Part ' + (partNum + 1) + ')</span>') : '';
+    const partTxt = (partNum !== null) ? (' <span style="font-size:0.75rem;color:#38bdf8;">(Phần ' + (partNum + 1) + ')</span>') : '';
 
     tr.innerHTML = '<td><b>Trang ' + p + '</b></td>' +
       '<td>' + (hasTime ? (formatTime(sec) + partTxt) : '<span style="color:#64748b;">(Chưa có)</span>') + '</td>' +
@@ -1451,7 +1451,7 @@ function onAudioEnded() {
   const audios = state.currentStoryAudios;
   if (audios && audios.length > 1 && state.currentAudioIndex < audios.length - 1) {
     const nextIdx = state.currentAudioIndex + 1;
-    showToast('🎵 Tự động chuyển sang Part ' + (nextIdx + 1));
+    showToast('🎵 Tự động chuyển sang phần ' + (nextIdx + 1));
     loadAudioPart(nextIdx);
     // Tự động phát tiếp sau khi load
     setTimeout(() => {
