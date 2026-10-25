@@ -86,9 +86,13 @@
 
       <!-- TÙY CHỌN TỰ ĐỘNG -->
       <div class="quick-options">
-        <label class="toggle-label" title="Tự động lật trang khi audio đọc tới mốc thời gian">
-          <input type="checkbox" id="chkAutoPageTurn" checked>
-          <span>Tự lật theo tiếng</span>
+        <label class="toggle-label page-turn-mode-label" title="Chọn cách tự động chuyển trang">
+          <span>Lật trang</span>
+          <select id="selPageTurnMode" aria-label="Chế độ lật trang">
+            <option value="markers">Theo mốc audio</option>
+            <option value="next">Khi hết trang</option>
+            <option value="off">Tắt tự lật</option>
+          </select>
         </label>
         <label class="toggle-label" title="Khi bạn bấm lật trang thì audio tự động nhảy đến đúng đoạn của trang đó">
           <input type="checkbox" id="chkAutoSeekAudio" checked>
@@ -170,6 +174,11 @@
     <div class="sync-banner">
       <div class="sync-info">
         <span class="page-badge"><span id="lblPagePrefix">Trang</span> <b id="lblCurrentPage">0</b> / <span id="lblTotalPages">0</span></span>
+        <label class="page-jump-control" title="Nhập số trang cần mở">
+          <span>Đến trang</span>
+          <input id="pageJumpInput" type="number" min="1" step="1" inputmode="numeric" aria-label="Số trang cần mở" placeholder="Số">
+          <button id="btnPageJump" type="button">Đi</button>
+        </label>
         <span id="lblPageTimestamp" class="page-time-badge">Mốc: Chưa gán</span>
         <span id="lblSaveStatus" class="save-status-badge">💾 Sẵn sàng</span>
       </div>
@@ -206,9 +215,21 @@
       <button id="btnNextPage" class="ctrl-btn page-ctrl" title="Trang sau">
         Trang ▶
       </button>
-      <button id="btnSpeed" class="ctrl-btn speed-btn" title="Tốc độ phát âm thanh">
-        1.0x
-      </button>
+      <button id="btnReplayPage" class="ctrl-btn" title="Phát lại audio từ mốc của trang hiện tại">↺ Trang</button>
+      <label class="speed-select-wrap" title="Chọn tốc độ phát âm thanh">
+        <span class="sr-only">Tốc độ phát</span>
+        <select id="speedSelect" class="ctrl-btn speed-select" aria-label="Tốc độ phát âm thanh">
+          <option value="0.5">0,5×</option>
+          <option value="0.75">0,75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1,25×</option>
+          <option value="1.5">1,5×</option>
+          <option value="1.75">1,75×</option>
+          <option value="2">2×</option>
+          <option value="2.5">2,5×</option>
+          <option value="3">3×</option>
+        </select>
+      </label>
     </div>
 
     <audio id="audioElement" preload="metadata"></audio>
