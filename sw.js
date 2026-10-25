@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pdf-audio-sync-v26';
+const CACHE_NAME = 'pdf-audio-sync-v27';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
