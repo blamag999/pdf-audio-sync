@@ -20,7 +20,10 @@ const state = {
 
   // Mốc thời gian: { [pageNumber]: timestampInSeconds } (CHỈ DÀNH RIÊNG CHO CUỐN HIỆN TẠI)
   pageTimestamps: {},
-  pageTurnMode: 'markers', // markers | next | off
+  pageTurnMode: 'markers', // markers: dừng chờ người đọc lật trang | next: tự chuyển trang | off: đọc liên tục
+  waitingForManualPageTurn: false,
+  pendingManualPage: null,
+  resumeAfterManualTurn: false,
   autoSeekAudio: true,
   isAudioDrivenChange: false,
 
@@ -693,7 +696,16 @@ function initEvents() {
   dom.selPageTurnMode.value = state.pageTurnMode;
   dom.selPageTurnMode.addEventListener('change', (e) => {
     state.pageTurnMode = e.target.value;
-    showToast(state.pageTurnMode === 'markers' ? 'Lật trang theo mốc audio' : state.pageTurnMode === 'next' ? 'Tự lật khi đến mốc trang kế tiếp' : 'Đã tắt tự lật trang');
+    state.waitingForManualPageTurn = false;
+    state.pendingManualPage = null;
+    state.resumeAfterManualTurn = false;
+    showToast(
+      state.pageTurnMode === 'markers'
+        ? 'Đến mốc trang kế tiếp, audio sẽ dừng chờ bạn lật trang.'
+        : state.pageTurnMode === 'next'
+          ? 'Audio tự chuyển trang khi đến mốc trang kế tiếp.'
+          : 'Đọc liên tục; không tự dừng hoặc tự chuyển trang.'
+    );
   });
   dom.chkAutoSeekAudio.addEventListener('change', (e) => { state.autoSeekAudio = e.target.checked; });
   dom.btnPageJump.addEventListener('click', jumpToEnteredPage);
@@ -1068,21 +1080,45 @@ function updateZoomLabel() {
 
 function changePage(delta) {
   if (!state.pdfDoc) return;
+  const previousPage = state.pageNum;
   const step = (state.viewMode === 'two-pages') ? 2 * delta : delta;
   const newPage = state.pageNum + step;
 
   if (newPage >= 1 && newPage <= state.totalPages) {
     state.pageNum = newPage;
-    state.isAudioDrivenChange = false;
-    renderCurrentSpread();
   } else if (delta > 0 && state.pageNum < state.totalPages) {
     state.pageNum = state.totalPages;
-    state.isAudioDrivenChange = false;
-    renderCurrentSpread();
   } else if (delta < 0 && state.pageNum > 1) {
     state.pageNum = 1;
-    state.isAudioDrivenChange = false;
-    renderCurrentSpread();
+  } else {
+    return;
+  }
+
+  state.isAudioDrivenChange = false;
+  renderCurrentSpread();
+
+  // Nếu audio đang chờ người đọc lật đến trang kế tiếp, tiếp tục tại đúng mốc.
+  if (state.waitingForManualPageTurn && state.pendingManualPage !== null) {
+    const reachedPendingPage = delta > 0 && state.pageNum >= state.pendingManualPage;
+    if (reachedPendingPage) {
+      const shouldResume = state.resumeAfterManualTurn;
+      state.waitingForManualPageTurn = false;
+      state.pendingManualPage = null;
+      state.resumeAfterManualTurn = false;
+      if (shouldResume) {
+        // renderCurrentSpread có thể tua đến mốc trang; chờ cập nhật seek rồi phát tiếp.
+        const resume = () => {
+          dom.audioElement.removeEventListener('seeked', resume);
+          dom.audioElement.play().catch(() => {});
+        };
+        dom.audioElement.addEventListener('seeked', resume, { once: true });
+        setTimeout(() => {
+          if (dom.audioElement.seeking) return;
+          dom.audioElement.removeEventListener('seeked', resume);
+          dom.audioElement.play().catch(() => {});
+        }, 150);
+      }
+    }
   }
 }
 
@@ -1220,6 +1256,9 @@ function jumpToEnteredPage() {
   }
   state.pageNum = state.viewMode === 'two-pages' ? (target % 2 === 0 ? Math.max(1, target - 1) : target) : target;
   state.isAudioDrivenChange = false;
+  state.waitingForManualPageTurn = false;
+  state.pendingManualPage = null;
+  state.resumeAfterManualTurn = false;
   renderCurrentSpread();
   dom.pageJumpInput.value = '';
 }
@@ -1280,35 +1319,36 @@ function onAudioTimeUpdate() {
   dom.audioSeeker.value = curr;
   dom.lblAudioCurrentTime.textContent = formatTime(curr);
 
-  if (state.pageTurnMode !== 'off' && state.pdfDoc && Object.keys(state.pageTimestamps).length > 0) {
-    const currentPart = state.currentAudioIndex || 0;
-    const matchesCurrentPart = (marker) =>
-      !state.currentStoryAudios || state.currentStoryAudios.length <= 1 || marker.part === currentPart;
-    let targetPage = null;
-    if (state.pageTurnMode === 'markers') {
-      let maxTime = -1;
-      for (const pageStr of Object.keys(state.pageTimestamps)) {
-        const page = parseInt(pageStr, 10);
-        const marker = getCurrentPageTimestamp(page);
-        if (!marker || !matchesCurrentPart(marker)) continue;
-        if (curr >= marker.time && marker.time > maxTime) { maxTime = marker.time; targetPage = page; }
-      }
-      if (targetPage !== null && state.viewMode === 'two-pages' && targetPage % 2 === 0) targetPage -= 1;
-    } else {
-      const step = state.viewMode === 'two-pages' ? 2 : 1;
-      const nextPage = state.pageNum + step;
-      const nextMarker = getCurrentPageTimestamp(nextPage);
-      if (nextPage <= state.totalPages && nextMarker && matchesCurrentPart(nextMarker) && curr >= nextMarker.time) targetPage = nextPage;
+  if (!state.pdfDoc || state.pageTurnMode === 'off' || Object.keys(state.pageTimestamps).length === 0) return;
+
+  const currentPart = state.currentAudioIndex || 0;
+  const matchesCurrentPart = (marker) =>
+    !state.currentStoryAudios || state.currentStoryAudios.length <= 1 || marker.part === currentPart;
+  const step = state.viewMode === 'two-pages' ? 2 : 1;
+  const nextPage = state.pageNum + step;
+  const nextMarker = nextPage <= state.totalPages ? getCurrentPageTimestamp(nextPage) : null;
+
+  // Chế độ chờ lật trang: chỉ dừng nếu trang kế tiếp có mốc hợp lệ.
+  // Tệp không có mốc cho trang kế tiếp sẽ tiếp tục phát bình thường.
+  if (state.pageTurnMode === 'markers') {
+    if (state.waitingForManualPageTurn || !nextMarker || !matchesCurrentPart(nextMarker)) return;
+    if (curr >= nextMarker.time) {
+      state.waitingForManualPageTurn = true;
+      state.pendingManualPage = nextPage;
+      state.resumeAfterManualTurn = !dom.audioElement.paused;
+      dom.audioElement.currentTime = nextMarker.time;
+      dom.audioElement.pause();
+      showToast('Đã hết phần audio của trang này. Lật sang trang kế tiếp để đọc tiếp.');
     }
-    if (targetPage !== null) {
-      const inCurrentSpread = state.viewMode === 'two-pages' && (targetPage === state.pageNum || targetPage === state.pageNum + 1);
-      if (targetPage !== state.pageNum && !inCurrentSpread) {
-        state.isAudioDrivenChange = true;
-        state.pageNum = targetPage;
-        renderCurrentSpread();
-        setTimeout(() => { state.isAudioDrivenChange = false; }, 400);
-      }
-    }
+    return;
+  }
+
+  // Chế độ tự chuyển trang: chuyển đến trang có mốc khi audio chạm mốc đó.
+  if (state.pageTurnMode === 'next' && nextMarker && matchesCurrentPart(nextMarker) && curr >= nextMarker.time) {
+    state.isAudioDrivenChange = true;
+    state.pageNum = nextPage;
+    renderCurrentSpread();
+    setTimeout(() => { state.isAudioDrivenChange = false; }, 400);
   }
 }
 function getStorageKey() {
