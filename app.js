@@ -3,6 +3,7 @@
 // STATE CHÍNH CỦA ỨNG DỤNG
 const state = {
   pdfDoc: null,
+  pdfLoading: false,
   pageNum: 1,
   totalPages: 0,
   pageRendering: false,
@@ -468,7 +469,8 @@ function updatePlaylistBadgeCount() {
 }
 
 function renderPlaylistView() {
-  dom.playlistItemsList.innerHTML = '';
+  dom.playlistItemsList.replaceChildren();
+  const fragment = document.createDocumentFragment();
   const query = state.searchQuery.toLowerCase().trim();
   const filter = state.activeFilter;
 
@@ -486,11 +488,10 @@ function renderPlaylistView() {
   });
 
   if (filtered.length === 0) {
-    dom.playlistItemsList.innerHTML = `
-      <div style="text-align:center; padding: 30px; color: #94a3b8;">
-        Không tìm thấy tập truyện nào phù hợp!
-      </div>
-    `;
+    const empty = document.createElement('div');
+    empty.style.cssText = 'text-align:center;padding:30px;color:#94a3b8;';
+    empty.textContent = 'Không tìm thấy tập truyện nào phù hợp!';
+    dom.playlistItemsList.appendChild(empty);
     return;
   }
 
@@ -548,8 +549,9 @@ function renderPlaylistView() {
       });
     });
 
-    dom.playlistItemsList.appendChild(card);
+    fragment.appendChild(card);
   });
+  dom.playlistItemsList.appendChild(fragment);
 }
 
 // MỞ TRUYỆN TỪ PLAYLIST (TỰ ĐỘNG NẠP MỐC ĐÚNG CUỐN ĐÓ)
@@ -954,23 +956,47 @@ async function loadPdfFromBlob(file, shouldResetSync = true) {
     await resetAndLoadSyncForBook(key, null);
   }
 
+  state.pdfLoading = true;
   try {
-    const buffer = await file.arrayBuffer();
-    const typedarray = new Uint8Array(buffer);
-    state.pdfDoc = await pdfjsLib.getDocument(typedarray).promise;
-    state.totalPages = state.pdfDoc.numPages;
+    // Chờ tác vụ vẽ hiện tại kết thúc trước khi giải phóng tài liệu cũ.
+    while (state.pageRendering) {
+      await new Promise(resolve => setTimeout(resolve, 16));
+    }
+
+    const previousDoc = state.pdfDoc;
+    state.pdfDoc = null;
+    if (previousDoc && typeof previousDoc.destroy === 'function') {
+      try { await previousDoc.destroy(); } catch (cleanupError) {
+        console.warn('Không thể giải phóng PDF cũ:', cleanupError);
+      }
+    }
+
+    // Giải phóng bộ đệm ảnh của canvas cũ trước khi nạp tài liệu mới.
+    [dom.pdfCanvasLeft, dom.pdfCanvasRight].forEach(canvas => {
+      if (!canvas) return;
+      canvas.width = 0;
+      canvas.height = 0;
+    });
+
+    const typedarray = new Uint8Array(await file.arrayBuffer());
+    const loadingTask = pdfjsLib.getDocument(typedarray);
+    const nextDoc = await loadingTask.promise;
+    state.pdfDoc = nextDoc;
+    state.totalPages = nextDoc.numPages;
     state.pageNum = 1;
 
     dom.lblTotalPages.textContent = state.totalPages;
     dom.emptyState.classList.add('hidden');
     dom.canvasWrapper.classList.remove('hidden');
-    dom.pdfLoadingIndicator.classList.add('hidden');
-
-    renderCurrentSpread();
   } catch (error) {
+    state.pdfDoc = null;
     alert('Không thể mở file PDF: ' + error.message);
+  } finally {
+    state.pdfLoading = false;
     dom.pdfLoadingIndicator.classList.add('hidden');
   }
+
+  if (state.pdfDoc) renderCurrentSpread();
 }
 
 function loadAudioFromBlob(file) {
@@ -1011,7 +1037,7 @@ function loadAudioFromBlob(file) {
 }
 
 async function renderCurrentSpread() {
-  if (!state.pdfDoc) return;
+  if (!state.pdfDoc || state.pdfLoading) return;
   if (state.pageRendering) {
     state.pageNumPending = state.pageNum;
     return;
