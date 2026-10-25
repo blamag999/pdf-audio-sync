@@ -1204,3 +1204,20 @@ body {
   border-color: #38bdf8;
   color: #fff;
 }
+
+
+/* Page jump, replay, playback speed and page-turn mode controls */
+.page-jump-control { display:inline-flex; align-items:center; gap:5px; font-size:.78rem; color:var(--text-muted); }
+.page-jump-control input { width:58px; min-width:0; height:30px; border:1px solid rgba(255,255,255,.2); border-radius:6px; background:var(--bg-card); color:var(--text-main); padding:0 5px; }
+.page-jump-control button { height:30px; padding:0 9px; border:0; border-radius:6px; background:var(--primary-color); color:white; cursor:pointer; }
+.page-turn-mode-label select { max-width:160px; height:30px; border:1px solid rgba(255,255,255,.2); border-radius:6px; background:var(--bg-card); color:var(--text-main); padding:0 6px; }
+.speed-select-wrap { display:inline-flex; }
+.ctrl-btn.speed-select { min-width:76px; padding:0 8px; border:1px solid rgba(255,255,255,.2); background:#1e293b; color:var(--text-main); cursor:pointer; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+@media (max-width:620px) {
+  .page-jump-control { gap:3px; }
+  .page-jump-control input { width:48px; }
+  .page-turn-mode-label select { max-width:124px; }
+  .controls-row { gap:4px; flex-wrap:wrap; }
+  .ctrl-btn.speed-select { min-width:68px; }
+}
