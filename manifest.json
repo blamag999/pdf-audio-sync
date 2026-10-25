@@ -1,7 +1,7 @@
 {
-  "name": "Read Aloud - Công cụ đọc sách kèm audio cho người học tiếng Anh",
-  "short_name": "Read Aloud",
-  "description": "Công cụ đọc sách kèm audio cho người học tiếng Anh",
+  "name": "Read Along - Sách kèm lời đọc",
+  "short_name": "Read Along",
+  "description": "Kết hợp sách PDF với lời đọc âm thanh để người đọc vừa nghe vừa theo dõi nội dung.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",
