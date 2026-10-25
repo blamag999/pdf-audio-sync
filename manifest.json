@@ -1,7 +1,7 @@
 {
-  "name": "PDF Audio Sync - Đọc Truyện & Nghe MP3",
-  "short_name": "PDF Audio",
-  "description": "Ứng dụng đọc PDF và nghe audio khớp theo từng trang",
+  "name": "Read Aloud - Công cụ đọc sách kèm audio cho người học tiếng Anh",
+  "short_name": "Read Aloud",
+  "description": "Công cụ đọc sách kèm audio cho người học tiếng Anh",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",
