@@ -156,17 +156,16 @@ const dom = {
   node1Modal: document.getElementById('node1Modal'),
   btnCloseNode1Modal: document.getElementById('btnCloseNode1Modal'),
   btnTriggerFolderPicker: document.getElementById('btnTriggerFolderPicker'),
+  btnTriggerPdfPicker: document.getElementById('btnTriggerPdfPicker'),
 
   pdfFileName: document.getElementById('pdfFileName'),
   audioFileName: document.getElementById('audioFileName'),
   syncCountBadge: document.getElementById('syncCountBadge'),
 
   filePickerSection: document.getElementById('filePickerSection'),
-  btnToggleSettings: document.getElementById('btnToggleSettings'),
 
   cardGuideFolder: document.getElementById('cardGuideFolder'),
   cardGuidePdf: document.getElementById('cardGuidePdf'),
-  cardGuideAudio: document.getElementById('cardGuideAudio'),
 
   viewerContainer: document.getElementById('viewerContainer'),
   dropOverlay: document.getElementById('dropOverlay'),
@@ -451,7 +450,13 @@ function buildPlaylistFromItems(rawItems) {
 }
 function updatePlaylistBadgeCount() {
   const count = state.playlist.length;
-  if (count > 0) {
+  const available = count > 0;
+  dom.btnOpenPlaylist.disabled = !available;
+  dom.btnOpenPlaylist.setAttribute('aria-disabled', String(!available));
+  dom.btnOpenPlaylist.title = available
+    ? 'Mở danh sách tập trong thư mục đã chọn'
+    : 'Hãy chọn thư mục trước để mở danh sách tập';
+  if (available) {
     dom.lblPlaylistCount.textContent = count;
     dom.lblPlaylistCount.classList.remove('hidden');
   } else {
@@ -638,10 +643,7 @@ function initEvents() {
   initIndexedDB();
 
   dom.btnOpenPlaylist.addEventListener('click', () => {
-    if (state.playlist.length === 0) {
-      alert('Chưa có danh sách truyện. Vui lòng chọn thư mục trên máy hoặc mở file PDF/MP3.');
-      return;
-    }
+    if (state.playlist.length === 0) return;
     dom.playlistModal.classList.remove('hidden');
   });
 
@@ -674,13 +676,19 @@ function initEvents() {
     dom.node1Modal.classList.add('hidden');
     handleFolderPick();
   });
-  dom.folderInput.addEventListener('change', (e) => handleFileList(Array.from(e.target.files)));
+  dom.btnTriggerPdfPicker.addEventListener('click', () => {
+    dom.node1Modal.classList.add('hidden');
+    dom.pdfFileInput.click();
+  });
+  dom.folderInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length) handleFileList(files);
+    e.target.value = '';
+  });
   dom.pdfFileInput.addEventListener('change', handlePdfFileSelect);
   dom.audioFileInput.addEventListener('change', handleAudioFileSelect);
-
   dom.cardGuideFolder.addEventListener('click', () => dom.btnNode1FolderOnline.click());
   dom.cardGuidePdf.addEventListener('click', () => dom.pdfFileInput.click());
-  dom.cardGuideAudio.addEventListener('click', () => dom.audioFileInput.click());
 
   dom.btnFitHeight.addEventListener('click', () => setViewMode('fit-height'));
   dom.btnTwoPages.addEventListener('click', () => setViewMode('two-pages'));
@@ -689,11 +697,7 @@ function initEvents() {
 
   initDragAndDrop();
 
-  dom.btnToggleSettings.addEventListener('click', () => {
-    dom.filePickerSection.classList.toggle('collapsed');
-  });
-
-  dom.selPageTurnMode.value = state.pageTurnMode;
+dom.selPageTurnMode.value = state.pageTurnMode;
   dom.selPageTurnMode.addEventListener('change', (e) => {
     state.pageTurnMode = e.target.value;
     state.waitingForManualPageTurn = false;
@@ -761,37 +765,21 @@ function initEvents() {
 // =======================================================
 async function handlePdfFileSelect(e) {
   const file = e.target.files[0];
+  e.target.value = '';
   if (!file) return;
 
   const key = getBookUniqueKey(file.name);
   state.currentBookKey = key;
+  // Mở hộp thoại MP3 ngay trong sự kiện chọn PDF để trình duyệt cho phép.
+  dom.audioFileInput.click();
 
-  // 1. Tải và hiển thị PDF (đã bao gồm reset và nạp mốc chuẩn của file này)
   await loadPdfFromBlob(file, true);
-
-  // 2. Tự động kiểm tra trong thư viện IndexedDB xem có file MP3 đã ghép đôi trước đó không
-  const saved = await getBookFromLibrary(key);
-  if (saved) {
-    if (saved.audios && saved.audios.length > 0) {
-      state.currentStoryAudios = saved.audios;
-      state.currentAudioIndex = 0;
-      loadAudioPart(0);
-      updateAudioPartUI();
-      showToast(`⚡ Đã tự động nạp ${saved.audios.length} phần MP3!`);
-    } else if (saved.audioBlob) {
-      state.currentStoryAudios = [{ name: saved.audioName || file.name, blob: saved.audioBlob }];
-      state.currentAudioIndex = 0;
-      loadAudioFromBlob(saved.audioBlob);
-      updateAudioPartUI();
-      showToast(`⚡ Đã tự động nạp MP3: ${saved.audioName}`);
-    }
-  }
-
   saveBookToLibrary({
     id: key,
     pdfName: file.name,
     pdfBlob: file
   });
+  showToast('Đã mở PDF. Hãy chọn file MP3 tương ứng trong hộp thoại.');
 }
 
 async function handleAudioFileSelect(e) {
