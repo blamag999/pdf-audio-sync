@@ -40,17 +40,17 @@
 
     <div class="header-right">
       <!-- NÚT MỞ DANH SÁCH TẬP TRUYỆN (PLAYLIST) -->
-      <button id="btnOpenPlaylist" class="icon-btn playlist-btn" title="Xem danh sách các tập truyện trong thư mục">
+      <button id="btnOpenPlaylist" class="icon-btn playlist-btn" title="Mở danh sách tập truyện trong thư mục đã chọn">
         📚 <span class="hide-mobile">Danh sách tập</span>
         <span id="lblPlaylistCount" class="badge-count hidden">0</span>
       </button>
 
       <button id="btnOpenSyncModal" class="icon-btn" title="Quản lý mốc đồng bộ thời gian">
-        ⚙️ <span class="hide-mobile">Mốc khớp</span>
+        ⚙️ <span class="hide-mobile">Mốc thời gian</span>
       </button>
 
-      <button id="btnToggleSettings" class="icon-btn" title="Ẩn/Hiện thanh chọn file">
-        📂 <span class="hide-mobile">Menu File</span>
+      <button id="btnToggleSettings" class="icon-btn" title="Ẩn hoặc hiện bảng chọn tệp">
+        📂 <span class="hide-mobile">Tệp</span>
       </button>
     </div>
   </header>
@@ -117,15 +117,15 @@
     <!-- Empty State Prompt -->
     <div id="emptyState" class="empty-state">
       <div class="empty-icon">📚</div>
-      <h2>Trình Đọc PDF & Khớp Audio Thông Minh</h2>
-      <p>Chọn thư mục trên thiết bị để hiển thị các tập truyện có trong thư mục:</p>
+      <h2>Trình đọc PDF và đồng bộ âm thanh</h2>
+      <p>Chọn thư mục trên thiết bị để xem và mở các tập truyện:</p>
       
       <div class="empty-guide-card">
         <div class="guide-item" id="cardGuideFolder">
           <div class="item-icon">📁</div>
           <div class="item-text">
             <b>Chọn thư mục trên thiết bị</b>
-            <span>Hiện danh sách toàn bộ truyện & audio để chọn nhanh chỉ 1 chạm</span>
+            <span>Hiển thị danh sách PDF và âm thanh để mở nhanh</span>
           </div>
         </div>
 
@@ -178,7 +178,7 @@
         <button id="btnPinCurrentTime" class="btn-pin" title="Gán giây hiện tại cho trang này">
           📍 Ghim mốc giây này cho trang
         </button>
-        <button id="btnSaveToFolder" class="btn-save-mini" title="Lưu file mốc vào thư mục hoặc tải về máy">
+        <button id="btnSaveToFolder" class="btn-save-mini" title="Lưu tệp mốc vào thư mục hoặc tải về máy">
           💾 Lưu mốc
         </button>
       </div>
@@ -206,7 +206,7 @@
       <button id="btnNextPage" class="ctrl-btn page-ctrl" title="Trang sau">
         Trang ▶
       </button>
-      <button id="btnSpeed" class="ctrl-btn speed-btn" title="Tốc độ đọc">
+      <button id="btnSpeed" class="ctrl-btn speed-btn" title="Tốc độ phát âm thanh">
         1.0x
       </button>
     </div>
@@ -224,7 +224,7 @@
       <div class="modal-body">
         <div class="option-block">
           <h4>💻 Thư mục trên máy tính hoặc điện thoại</h4>
-          <p class="option-desc">Chọn thư mục chứa PDF, MP3 và JSON mốc thời gian. Ứng dụng chỉ đọc tệp cục bộ; mốc đọc được đồng bộ riêng qua GitHub.</p>
+          <p class="option-desc">Chọn thư mục chứa PDF, MP3 và tệp JSON mốc đọc. PDF và MP3 chỉ được đọc trên thiết bị; mốc thời gian được đồng bộ qua GitHub.</p>
           <button id="btnTriggerFolderPicker" class="btn-primary-large">📂 Chọn thư mục trên thiết bị</button>
         </div>
       </div>
@@ -245,8 +245,8 @@
       <div class="playlist-search-bar">
         <input type="text" id="txtPlaylistSearch" class="search-input" placeholder="🔍 Tìm kiếm tập truyện...">
         <div class="playlist-filter-tabs">
-          <button class="filter-tab active" data-filter="paired">📖 Có cả PDF & MP3</button>
-          <button class="filter-tab" data-filter="all">Tất cả tập</button>
+          <button class="filter-tab active" data-filter="paired">📖 Đủ PDF và MP3</button>
+          <button class="filter-tab" data-filter="all">Tất cả</button>
         </div>
       </div>
 
@@ -266,7 +266,7 @@
   <div id="syncModal" class="modal-overlay hidden">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>⏱️ Quản lý mốc khớp thời gian các trang</h3>
+        <h3>⏱️ Quản lý mốc thời gian theo trang</h3>
         <button id="btnCloseSyncModal" class="close-btn">&times;</button>
       </div>
 
@@ -276,7 +276,7 @@
         </p>
 
         <div class="sync-actions-row">
-          <button id="btnExportSync" class="btn-secondary" title="Xuất file mốc để lưu vào thư mục truyện trên máy">📥 Tải file mốc cho thư mục máy (.json)</button>
+          <button id="btnExportSync" class="btn-secondary" title="Xuất tệp mốc để lưu cùng thư mục truyện trên máy">📥 Tải tệp mốc (.json)</button>
           <button id="btnSaveToGithubFolder" class="btn-primary" title="Lưu trực tiếp các mốc vào GitHub">☁️ Đồng bộ GitHub</button>
           <p class="modal-desc">Mốc được lưu trong sync_data theo tên PDF. Để ghi mốc, cần GitHub Personal Access Token có quyền Contents: Read and write. Token chỉ được giữ trong phiên trình duyệt hiện tại.</p>
           <label for="importSyncInput" class="btn-secondary">
