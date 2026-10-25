@@ -261,7 +261,25 @@ async function syncCurrentBookToGitHub({askForToken=false}={}){
  }catch(e){console.error(e);updateSaveStatusBadge('⚠️ Đồng bộ GitHub lỗi');if(askForToken)alert('Không thể đồng bộ. Kiểm tra token và quyền Contents: Read and write.\\n\\n'+e.message);return false;}
 }
 function scheduleGitHubSync(){if(!getGithubToken()||!state.currentBookKey)return;if(githubSyncTimer)clearTimeout(githubSyncTimer);githubSyncTimer=setTimeout(()=>{githubSyncTimer=null;syncCurrentBookToGitHub();},900);}
-async function loadCloudSyncForBook(){for(const stem of [...new Set([getSyncStem(),state.currentBookKey].filter(Boolean))]){try{const url='https://raw.githubusercontent.com/'+GITHUB_OWNER+'/'+GITHUB_REPO+'/'+GITHUB_BRANCH+'/'+GITHUB_SYNC_DIR+'/'+encodeURIComponent(stem)+'.json';const res=await fetch(url,{cache:'no-store'});if(!res.ok)continue;const data=await res.json();if(data&&typeof data==='object'&&!Array.isArray(data)){state.pageTimestamps=data;saveSyncToStorage();updatePageTimestampBadge();updateSyncCountBadge();updateSaveStatusBadge('☁️ Đã nạp mốc từ GitHub');return true;}}catch(e){console.warn('Không thể nạp mốc GitHub:',e);}}return false;}
+async function loadCloudSyncForBook(){
+  const stems=[...new Set([getSyncStem(),state.currentBookKey].filter(Boolean))];
+  for(const stem of stems){
+    // Ưu tiên tên chuẩn mới, sau đó thử tên cũ có hậu tố _sync.
+    for(const filename of [stem+'.json',stem+'_sync.json']){
+      try{
+        const url='https://raw.githubusercontent.com/'+GITHUB_OWNER+'/'+GITHUB_REPO+'/'+GITHUB_BRANCH+'/'+GITHUB_SYNC_DIR+'/'+encodeURIComponent(filename);
+        const res=await fetch(url,{cache:'no-store'});
+        if(!res.ok)continue;
+        const data=await res.json();
+        if(data&&typeof data==='object'&&!Array.isArray(data)){
+          state.pageTimestamps=data;saveSyncToStorage();updatePageTimestampBadge();updateSyncCountBadge();
+          updateSaveStatusBadge('☁️ Đã nạp mốc từ GitHub');return true;
+        }
+      }catch(e){console.warn('Không thể nạp mốc GitHub:',e);}
+    }
+  }
+  return false;
+}
 
 // =======================================================
 // RESET VÀ NẠP MỐC CHUẨN XÁC THEO TỪNG CUỐN (FIX TRIỆT ĐỂ LỖI DỮ LIỆU LẠ)
