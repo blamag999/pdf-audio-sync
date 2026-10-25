@@ -2109,3 +2109,37 @@ button:focus-visible, select:focus-visible, input:focus-visible, label.action-bt
 @media (max-width: 420px) {
   .controls-row { gap: 6px; }
 }
+
+
+/* Màn hình chờ: một nút Bắt đầu và hướng dẫn sử dụng ngắn gọn */
+.usage-guide {
+  max-width: 620px;
+  margin: 8px auto 0;
+  padding: 16px 20px;
+  text-align: left;
+  background: rgba(30,41,59,.72);
+  border: 1px solid rgba(148,163,184,.2);
+  border-radius: 12px;
+}
+.usage-guide h3 {
+  margin: 0 0 8px;
+  color: #60a5fa;
+  font-size: 1rem;
+}
+.usage-guide ol {
+  padding-left: 21px;
+  color: #cbd5e1;
+  font-size: .86rem;
+  line-height: 1.65;
+}
+.usage-guide li + li { margin-top: 3px; }
+.file-picker-card .btn-node-1 {
+  min-width: 210px;
+  justify-content: center;
+  padding: 10px 18px;
+  font-size: .95rem;
+}
+@media (max-width: 600px) {
+  .usage-guide { padding: 13px 15px; }
+  .usage-guide ol { font-size: .82rem; }
+}
