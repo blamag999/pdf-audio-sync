@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import re
+import urllib.parse
 
 DEFAULT_R2_URL = "https://pub-763a3a5ae235415cbef15b64f7a20820.r2.dev"
 
@@ -98,7 +99,8 @@ def scan_and_generate():
                     "syncUrl": ""
                 }
 
-            file_url = f"{base_url}/{rel_path.lstrip('/')}"
+            encoded_rel = '/'.join(urllib.parse.quote(seg) for seg in rel_path.lstrip('/').split('/'))
+            file_url = f"{base_url}/{encoded_rel}"
 
             if ext == '.pdf':
                 groups[matched_key]["pdfUrl"] = file_url

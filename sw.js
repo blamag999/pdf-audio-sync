@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pdf-audio-sync-v8';
+const CACHE_NAME = 'pdf-audio-sync-v9';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -35,6 +35,22 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  const url = event.request.url;
+
+  // Không can thiệp vào các request tải PDF, Audio hoặc domain R2 / bên ngoài
+  if (
+    url.includes('r2.dev') ||
+    url.includes('drive.google.com') ||
+    url.includes('googleusercontent.com') ||
+    url.endsWith('.pdf') ||
+    url.endsWith('.mp3') ||
+    url.endsWith('.m4a') ||
+    url.endsWith('.wav') ||
+    url.includes('corsproxy')
+  ) {
+    return; // Để trình duyệt trực tiếp tải từ mạng
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       return cachedResponse || fetch(event.request);
