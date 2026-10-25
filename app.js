@@ -1340,6 +1340,7 @@ function clearAllSync() {
     state.pageTimestamps = {};
     saveSyncToStorage();
     autoSaveSyncToLocalDirectory();
+    scheduleGitHubSync();
     updatePageTimestampBadge();
     updateSyncCountBadge();
     renderSyncTable();
@@ -1368,6 +1369,7 @@ function importSyncData(e) {
         state.pageTimestamps = imported;
         saveSyncToStorage();
         autoSaveSyncToLocalDirectory();
+        scheduleGitHubSync();
         updatePageTimestampBadge();
         updateSyncCountBadge();
         renderSyncTable();
