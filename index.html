@@ -40,17 +40,13 @@
 
     <div class="header-right">
       <!-- NÚT MỞ DANH SÁCH TẬP TRUYỆN (PLAYLIST) -->
-      <button id="btnOpenPlaylist" class="icon-btn playlist-btn" title="Mở danh sách tập truyện trong thư mục đã chọn">
+      <button id="btnOpenPlaylist" class="icon-btn playlist-btn" title="Chọn thư mục trước để mở danh sách tập" disabled aria-disabled="true">
         📚 <span class="hide-mobile">Danh sách tập</span>
         <span id="lblPlaylistCount" class="badge-count hidden">0</span>
       </button>
 
       <button id="btnOpenSyncModal" class="icon-btn" title="Quản lý mốc đồng bộ thời gian">
         ⚙️ <span class="hide-mobile">Mốc thời gian</span>
-      </button>
-
-      <button id="btnToggleSettings" class="icon-btn" title="Ẩn hoặc hiện bảng chọn tệp">
-        📂 <span class="hide-mobile">Tệp</span>
       </button>
     </div>
   </header>
@@ -59,22 +55,10 @@
   <section id="filePickerSection" class="file-picker-section">
     <div class="file-picker-card">
       
-      <!-- NÚT 1: THƯ MỤC CỤC BỘ -->
-      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" title="Mở thư mục PDF và MP3 trên thiết bị">
-        📁 Chọn thư mục trên máy
-      </button>
+      <!-- Chọn thư mục để duyệt danh sách tập, hoặc chọn một PDF để mở riêng -->
+      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" title="Chọn thư mục truyện hoặc một file PDF">📂 Chọn thư mục hoặc PDF</button>
       <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
-
-      <!-- NÚT 2: CHỌN FILE PDF (TỰ ĐỘNG MỞ MP3 VÀ MỐC NẾU ĐÃ TỪNG MỞ) -->
-      <label for="pdfFileInput" class="action-btn btn-node-2" title="Chọn file PDF truyện (Tự động nạp MP3 và mốc nếu đã từng mở)">
-        📄 Nút 2: Chọn PDF
-      </label>
       <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none;">
-
-      <!-- NÚT 3: CHỌN FILE MP3 (TỰ ĐỘNG MỞ PDF VÀ MỐC NẾU ĐÃ TỪNG MỞ) -->
-      <label for="audioFileInput" class="action-btn btn-node-3" title="Chọn file MP3 đọc truyện (Tự động nạp PDF và mốc nếu đã từng mở)">
-        🎵 Nút 3: Chọn MP3
-      </label>
       <input type="file" id="audioFileInput" accept="audio/*" multiple style="display:none;">
 
       <!-- TRẠNG THÁI FILE ĐANG NẠP -->
@@ -122,31 +106,25 @@
     <div id="emptyState" class="empty-state">
       <div class="empty-icon">📚</div>
       <h2>Trình đọc PDF và đồng bộ âm thanh</h2>
-      <p>Chọn thư mục trên thiết bị để xem và mở các tập truyện:</p>
+      <p>Chọn thư mục để duyệt danh sách tập, hoặc chọn một PDF để ghép với MP3 tương ứng:</p>
       
       <div class="empty-guide-card">
         <div class="guide-item" id="cardGuideFolder">
           <div class="item-icon">📁</div>
           <div class="item-text">
-            <b>Chọn thư mục trên thiết bị</b>
-            <span>Hiển thị danh sách PDF và âm thanh để mở nhanh</span>
+            <b>Chọn thư mục</b>
+            <span>Hiển thị danh sách tập để chọn nghe</span>
           </div>
         </div>
 
         <div class="guide-item" id="cardGuidePdf">
           <div class="item-icon">📄</div>
           <div class="item-text">
-            <b>Nút 2: Chọn PDF</b>
-            <span>Tự động mở MP3 và các mốc thời gian nếu đã từng mở trước đó</span>
+            <b>Chọn một PDF</b>
+            <span>Ứng dụng sẽ hỏi file MP3 tương ứng</span>
           </div>
         </div>
 
-        <div class="guide-item" id="cardGuideAudio">
-          <div class="item-icon">🎵</div>
-          <div class="item-text">
-            <b>Nút 3: Chọn MP3</b>
-            <span>Tự động mở PDF và các mốc thời gian nếu đã từng mở trước đó</span>
-          </div>
         </div>
       </div>
 
@@ -239,14 +217,18 @@
   <div id="node1Modal" class="modal-overlay hidden">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>📁 Mở thư mục PDF và MP3 trên thiết bị</h3>
+        <h3>📂 Chọn thư mục hoặc PDF</h3>
         <button id="btnCloseNode1Modal" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
         <div class="option-block">
-          <h4>💻 Thư mục trên máy tính hoặc điện thoại</h4>
-          <p class="option-desc">Chọn thư mục chứa PDF, MP3 và tệp JSON mốc đọc. PDF và MP3 chỉ được đọc trên thiết bị; mốc thời gian được đồng bộ qua GitHub.</p>
-          <button id="btnTriggerFolderPicker" class="btn-primary-large">📂 Chọn thư mục trên thiết bị</button>
+          <h4>📁 Mở cả thư mục truyện</h4>
+          <p class="option-desc">Nạp danh sách các tập PDF/MP3 trong thư mục để bạn chọn tập muốn nghe. Tệp truyện vẫn nằm trên thiết bị.</p>
+          <button id="btnTriggerFolderPicker" class="btn-primary-large">📂 Chọn thư mục</button>
+          <div class="divider-text">HOẶC</div>
+          <h4>📄 Mở một file PDF</h4>
+          <p class="option-desc">Sau khi chọn PDF, ứng dụng sẽ yêu cầu chọn file MP3 tương ứng.</p>
+          <button id="btnTriggerPdfPicker" class="btn-success-large">📄 Chọn PDF</button>
         </div>
       </div>
     </div>
