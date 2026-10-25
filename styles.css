@@ -2052,3 +2052,60 @@ button:focus-visible, select:focus-visible, input:focus-visible, label.action-bt
   .controls-row #btnForward5 { width: 38px; height: 38px; min-height: 38px; }
   .controls-row #btnPlayPause { height: 44px; min-height: 44px; }
 }
+
+
+/* Tinh chỉnh theo yêu cầu: Play chữ nhật tỷ lệ 2:1, cụm nút căn giữa */
+.controls-row {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 9px;
+  width: 100%;
+  margin-inline: auto;
+}
+.controls-row #btnPrevPage,
+.controls-row #btnNextPage,
+.controls-row #btnRewind5,
+.controls-row #btnForward5 {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+}
+.controls-row #btnPlayPause {
+  flex: 0 0 84px;
+  width: 84px;
+  height: 42px;
+  min-height: 42px;
+  border-radius: 9px;
+}
+.controls-row #btnReplayPage,
+.controls-row .speed-select-wrap {
+  flex: 0 0 auto;
+}
+@media (max-width: 760px) {
+  .controls-row {
+    gap: 7px;
+    padding: 8px;
+  }
+  .controls-row #btnPrevPage,
+  .controls-row #btnNextPage,
+  .controls-row #btnRewind5,
+  .controls-row #btnForward5 {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+  }
+  .controls-row #btnPlayPause {
+    flex: 0 0 76px;
+    width: 76px;
+    height: 38px;
+    min-height: 38px;
+  }
+  .controls-row .speed-select-wrap { max-width: 76px; }
+}
+@media (max-width: 420px) {
+  .controls-row { gap: 6px; }
+}
