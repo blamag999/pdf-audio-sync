@@ -20,7 +20,7 @@ const state = {
 
   // Mốc thời gian: { [pageNumber]: timestampInSeconds } (CHỈ DÀNH RIÊNG CHO CUỐN HIỆN TẠI)
   pageTimestamps: {},
-  pageTurnMode: 'markers', // markers: dừng chờ người đọc lật trang | next: tự chuyển trang | off: đọc liên tục
+  pageTurnMode: 'next', // next: tự lật trang theo mốc | markers: dừng chờ người đọc lật trang | off: đọc liên tục
   waitingForManualPageTurn: false,
   pendingManualPage: null,
   resumeAfterManualTurn: false,
@@ -718,9 +718,9 @@ dom.selPageTurnMode.value = state.pageTurnMode;
     state.resumeAfterManualTurn = false;
     showToast(
       state.pageTurnMode === 'markers'
-        ? 'Đến mốc trang kế tiếp, audio sẽ dừng chờ bạn lật trang.'
+        ? 'Đến mốc trang kế tiếp, audio sẽ dừng chờ bạn lật trang; nếu không có mốc, audio tiếp tục.'
         : state.pageTurnMode === 'next'
-          ? 'Audio tự chuyển trang khi đến mốc trang kế tiếp.'
+          ? 'Audio tự động lật trang theo mốc thời gian.'
           : 'Đọc liên tục; không tự dừng hoặc tự chuyển trang.'
     );
   });
@@ -1372,7 +1372,14 @@ function onAudioTimeUpdate() {
   dom.audioSeeker.value = curr;
   dom.lblAudioCurrentTime.textContent = formatTime(curr);
 
-  if (!state.pdfDoc || state.pageTurnMode === 'off' || Object.keys(state.pageTimestamps).length === 0) return;
+  const hasPageMarkers = Object.keys(state.pageTimestamps).length > 0;
+  if (!hasPageMarkers && state.pageTurnMode === 'next') {
+    // Không có mốc thời gian: tự chuyển sang chế độ chờ lật trang.
+    // Chế độ này chỉ dừng khi có mốc hợp lệ; vì không có mốc nên audio vẫn chạy liên tục.
+    state.pageTurnMode = 'markers';
+    dom.selPageTurnMode.value = 'markers';
+  }
+  if (!state.pdfDoc || state.pageTurnMode === 'off' || !hasPageMarkers) return;
 
   const currentPart = state.currentAudioIndex || 0;
   const matchesCurrentPart = (marker) =>
