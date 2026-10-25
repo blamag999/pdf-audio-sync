@@ -7,19 +7,19 @@
 ## Read Along hoạt động như thế nào?
 
 ### Bước 1 — Mở sách
-![Mở sách PDF](assets/read-along-step-1.svg)
+<img src="assets/read-along-step-1.svg" alt="Mở sách PDF" width="120">
 Chọn tệp PDF hoặc một thư mục chứa nhiều tập truyện. PDF là phần nội dung người đọc nhìn thấy trên màn hình.
 
 ### Bước 2 — Ghép lời đọc
-![Ghép lời đọc](assets/read-along-step-2.svg)
+<img src="assets/read-along-step-2.svg" alt="Ghép lời đọc" width="120">
 Chọn tệp MP3 hoặc định dạng âm thanh được trình duyệt hỗ trợ, tương ứng với cuốn sách. Người đọc có thể nghe và theo dõi văn bản cùng lúc.
 
 ### Bước 3 — Đồng bộ âm thanh và trang
-![Đồng bộ âm thanh và trang](assets/read-along-step-3.svg)
+<img src="assets/read-along-step-3.svg" alt="Đồng bộ âm thanh và trang" width="120">
 Gán thời điểm bắt đầu đọc cho từng trang. Khi âm thanh đến mốc đã thiết lập, Read Along có thể tự chuyển trang hoặc dừng để người đọc tự lật trang.
 
 ### Bước 4 — Nghe, đọc và luyện tập
-![Nghe, đọc và luyện tập](assets/read-along-step-4.svg)
+<img src="assets/read-along-step-4.svg" alt="Nghe, đọc và luyện tập" width="120">
 Tua âm thanh, thay đổi tốc độ, đến trang bất kỳ hoặc nghe lại trang hiện tại để theo kịp lời đọc.
 
 **Lưu mốc đồng bộ:** Có thể tải mốc thời gian thành tệp JSON hoặc đồng bộ lên GitHub. Tệp PDF và âm thanh vẫn nằm trên thiết bị của bạn.
