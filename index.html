@@ -58,8 +58,9 @@
   <section id="filePickerSection" class="file-picker-section">
     <div class="file-picker-card">
       
-      <!-- Chọn thư mục để duyệt danh sách tập, hoặc chọn một PDF để mở riêng -->
-      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" title="Bắt đầu: chọn thư mục hoặc PDF">📂 Bắt đầu <span aria-hidden="true">▾</span></button>
+      <!-- Chọn thư mục trực tiếp hoặc mở một PDF riêng -->
+      <button id="btnNode1FolderOnline" class="action-btn btn-node-1" type="button" title="Chọn thư mục để duyệt danh sách tập">📁 Chọn thư mục</button>
+      <button id="btnDirectPdfPicker" class="action-btn btn-direct-pdf" type="button" title="Chọn PDF, sau đó chọn file MP3 tương ứng">📄 Chọn PDF <small>Cần chọn file MP3 tương ứng để nghe</small></button>
       <button id="btnChooseAudio" class="action-btn btn-choose-audio hidden" type="button" title="Chọn MP3 cho PDF đang mở">🎵 Chọn MP3</button>
       <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
       <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none;">
@@ -180,20 +181,20 @@
     </div>
 
     <div class="controls-row">
-      <button id="btnPrevPage" class="ctrl-btn page-ctrl" title="Trang trước">
-        ◀ Trang trước
+      <button id="btnPrevPage" class="ctrl-btn page-ctrl" type="button" title="Trang trước" aria-label="Trang trước">
+        ◀
       </button>
-      <button id="btnRewind5" class="ctrl-btn" title="Tua lùi 5s">
-        ↺ 5s
+      <button id="btnRewind5" class="ctrl-btn" type="button" title="Tua lùi 5 giây" aria-label="Tua lùi 5 giây">
+        ↶
       </button>
       <button id="btnPlayPause" class="ctrl-btn play-btn" type="button" title="Phát" aria-label="Phát" aria-pressed="false">
         <span id="playPauseIcon" aria-hidden="true">▶</span>
       </button>
-      <button id="btnForward5" class="ctrl-btn" title="Tua tiến 5s">
-        5s ↻
+      <button id="btnForward5" class="ctrl-btn" type="button" title="Tua tới 5 giây" aria-label="Tua tới 5 giây">
+        ↷
       </button>
-      <button id="btnNextPage" class="ctrl-btn page-ctrl" title="Trang sau">
-        Trang sau ▶
+      <button id="btnNextPage" class="ctrl-btn page-ctrl" type="button" title="Trang sau" aria-label="Trang sau">
+        ▶
       </button>
       <button id="btnReplayPage" class="ctrl-btn replay-page-btn" type="button" title="Đọc lại trang hiện tại từ mốc thời gian" aria-label="Đọc lại trang hiện tại"><span class="replay-page-icon" aria-hidden="true">↺</span></button>
       <label class="speed-select-wrap" title="Chọn tốc độ phát âm thanh">
