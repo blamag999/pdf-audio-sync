@@ -1542,3 +1542,113 @@ button:focus-visible, select:focus-visible, input:focus-visible, label.action-bt
   .file-picker-card > .btn-node-1 { font-size:.8rem; }
   .ctrl-btn.page-ctrl { font-size:.86rem; }
 }
+
+
+/* Tinh chỉnh theo phản hồi: thanh chọn tệp một dòng, nút điều khiển phân cấp rõ */
+@media (min-width: 1101px) {
+  .file-picker-section { padding-top: 7px; padding-bottom: 7px; }
+  .file-picker-card {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+    align-items: center;
+  }
+  .file-picker-card > .btn-node-1 {
+    flex: 0 0 auto;
+    min-width: 205px;
+    min-height: 38px;
+    padding: 7px 11px;
+  }
+  .active-files-indicator {
+    flex: 1 1 0;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 7px;
+    min-width: 0;
+  }
+  .file-status-pill {
+    max-width: 230px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .quick-options {
+    flex: 0 0 auto;
+    width: auto;
+    margin-left: 0;
+    padding-top: 0;
+    border-top: 0;
+    gap: 8px 12px;
+    flex-wrap: nowrap;
+  }
+  .page-turn-mode-label { gap: 6px; }
+  .page-turn-mode-label select { max-width: 205px; min-height: 34px; }
+  .toggle-label { white-space: nowrap; }
+}
+.controls-row {
+  grid-template-columns: minmax(125px,1.2fr) minmax(30px,.36fr) minmax(72px,.9fr) minmax(30px,.36fr) minmax(125px,1.2fr) minmax(76px,.68fr) 64px;
+  gap: clamp(4px,.55vw,8px);
+}
+.ctrl-btn.page-ctrl {
+  min-height: 50px;
+  font-size: .92rem;
+  font-weight: 800;
+  color: #fff;
+  border-color: rgba(255,255,255,.15);
+}
+#btnPrevPage {
+  background: linear-gradient(135deg,#2563eb,#1d4ed8);
+  box-shadow: 0 3px 10px rgba(37,99,235,.22);
+}
+#btnPrevPage:hover { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+#btnNextPage {
+  background: linear-gradient(135deg,#0f9f86,#047857);
+  box-shadow: 0 3px 10px rgba(4,120,87,.22);
+}
+#btnNextPage:hover { background: linear-gradient(135deg,#10b981,#059669); }
+/* Nút tua và đọc lại nhỏ, gọn hơn rõ rệt so với nút chuyển trang/phát */
+#btnRewind5, #btnForward5 {
+  min-height: 26px !important;
+  height: 26px;
+  align-self: center;
+  padding: 2px 3px !important;
+  font-size: .62rem !important;
+  line-height: 1;
+  gap: 2px;
+  border-radius: 7px;
+  opacity: .88;
+}
+.replay-page-btn {
+  min-height: 27px !important;
+  height: 27px;
+  align-self: center;
+  padding: 3px 5px !important;
+  gap: 3px;
+  font-size: .62rem !important;
+  line-height: 1.05;
+  border-radius: 7px;
+}
+.replay-page-icon { font-size: .8rem; }
+@media (max-width: 1100px) {
+  .file-picker-card { flex-wrap: wrap; }
+  .active-files-indicator { flex: 1 1 280px; flex-wrap: wrap; }
+  .quick-options {
+    flex: 1 1 100%;
+    margin-left: 0;
+    padding-top: 6px;
+    border-top: 1px solid var(--ui-border);
+    flex-wrap: wrap;
+  }
+  .controls-row {
+    grid-template-columns: minmax(105px,1.2fr) minmax(28px,.36fr) minmax(64px,.85fr) minmax(28px,.36fr) minmax(105px,1.2fr) minmax(70px,.7fr) 62px;
+  }
+  .ctrl-btn.page-ctrl { font-size: .86rem; }
+}
+@media (max-width: 760px) {
+  .controls-row { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  #btnPrevPage, #btnNextPage { grid-column: span 2; min-height: 44px; font-size: .82rem; }
+  #btnRewind5, #btnForward5 { min-height: 24px !important; height: 24px; font-size: .6rem !important; }
+  .replay-page-btn { grid-column: span 2; min-height: 26px !important; height: 26px; font-size: .62rem !important; }
+  .replay-page-icon { font-size: .78rem; }
+}
