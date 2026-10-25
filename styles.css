@@ -1652,3 +1652,115 @@ button:focus-visible, select:focus-visible, input:focus-visible, label.action-bt
   .replay-page-btn { grid-column: span 2; min-height: 26px !important; height: 26px; font-size: .62rem !important; }
   .replay-page-icon { font-size: .78rem; }
 }
+
+
+/* Phương án B: menu ẩn/hiện thanh chọn tệp; điều khiển phát tối giản */
+.menu-toggle-btn {
+  min-width: 76px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 12px;
+  background: #1e2b40;
+  border: 1px solid rgba(148,163,184,.28);
+  border-radius: 10px;
+  font-weight: 700;
+}
+.menu-toggle-btn:hover { background: #293a53; border-color: rgba(125,211,252,.55); }
+.file-picker-section.hidden { display: none !important; }
+.file-picker-card { gap: 8px 10px; }
+.file-picker-card > .btn-node-1 {
+  min-width: 125px;
+  min-height: 36px;
+  padding: 7px 12px;
+  gap: 8px;
+  border-radius: 9px;
+  background: linear-gradient(135deg,#2563eb,#0f766e);
+}
+.btn-choose-audio {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  background: #1e3a5f;
+  border: 1px solid rgba(96,165,250,.42);
+  color: #dbeafe;
+  font-size: .82rem;
+  font-weight: 650;
+}
+.btn-choose-audio:hover { background: #254b77; }
+.file-status-pill { font-size: .76rem; padding: 6px 9px; }
+.quick-options { gap: 7px 12px; }
+.page-turn-mode-label select { min-height: 33px; font-size: .82rem; }
+.controls-row {
+  grid-template-columns: minmax(112px,1.25fr) minmax(42px,.52fr) minmax(54px,.62fr) minmax(42px,.52fr) minmax(112px,1.25fr) minmax(94px,.85fr) 68px;
+  gap: 7px;
+  max-width: 1260px;
+}
+.ctrl-btn.page-ctrl {
+  min-height: 40px;
+  height: 40px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  font-size: .84rem;
+}
+.ctrl-btn.play-btn {
+  min-height: 40px;
+  height: 40px;
+  padding: 4px 8px;
+  border-radius: 50%;
+  width: 44px;
+  justify-self: center;
+  align-self: center;
+  font-size: 1.05rem;
+}
+#btnRewind5, #btnForward5 {
+  min-height: 29px !important;
+  height: 29px;
+  padding: 3px 4px !important;
+  font-size: .7rem !important;
+  border-radius: 7px;
+}
+.replay-page-btn {
+  min-height: 31px !important;
+  height: 31px;
+  padding: 4px 6px !important;
+  font-size: .7rem !important;
+  gap: 4px;
+  border-radius: 8px;
+}
+.replay-page-icon { font-size: .95rem; }
+.ctrl-btn.speed-select {
+  min-height: 34px;
+  height: 34px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: .78rem;
+}
+.speed-select-wrap { align-self: center; }
+@media (max-width: 1100px) {
+  .file-picker-card { flex-wrap: wrap; }
+  .quick-options { flex: 1 1 100%; }
+  .controls-row { grid-template-columns: minmax(100px,1.15fr) minmax(34px,.45fr) 48px minmax(34px,.45fr) minmax(100px,1.15fr) minmax(88px,.85fr) 64px; }
+}
+@media (max-width: 760px) {
+  .menu-toggle-btn { min-width: 42px; padding: 7px 9px; }
+  .file-picker-card { display: flex; flex-wrap: wrap; }
+  .file-picker-card > .btn-node-1, .btn-choose-audio { flex: 1 1 calc(50% - 5px); min-width: 0; }
+  .active-files-indicator { flex: 1 1 100%; }
+  .quick-options { flex: 1 1 100%; }
+  .controls-row { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; }
+  #btnPrevPage, #btnNextPage { grid-column: span 2; min-height: 38px; height: 38px; }
+  #btnPlayPause { width: 40px; height: 40px; min-height: 40px; grid-column: span 2; grid-row: 2; }
+  #btnRewind5, #btnForward5 { min-height: 26px !important; height: 26px; }
+  .replay-page-btn { grid-column: span 2; min-height: 28px !important; height: 28px; }
+  .speed-select-wrap { grid-column: span 2; max-width: none; width: 100%; }
+  .ctrl-btn.speed-select { width: 100%; }
+}
+@media (max-width: 420px) {
+  .menu-toggle-btn span { display: none; }
+  .file-status-pill { max-width: 100%; }
+  .controls-row { gap: 5px; }
+  .ctrl-btn.page-ctrl { font-size: .75rem; }
+}
