@@ -12,6 +12,7 @@ const state = {
   audioFileName: '',
   currentBookKey: '', // Key định danh duy nhất của cuốn truyện hiện tại
   dirHandle: null, // Thư mục trên máy tính nếu được cấp quyền ghi
+  folderJsonFiles: [], // Các tệp JSON trong thư mục được chọn để đồng bộ hàng loạt
 
   // DANH SÁCH TẬP TRUYỆN (PLAYLIST)
   playlist: [],
@@ -282,6 +283,74 @@ function clearGithubToken(){
  updateGithubTokenStatus();showToast('Đã xóa token khỏi phiên trình duyệt.');
 }
 function encodeBase64Utf8(v){const b=new TextEncoder().encode(v);let x='';for(let i=0;i<b.length;i+=0x8000)x+=String.fromCharCode(...b.subarray(i,i+0x8000));return btoa(x);}
+async function getGithubWriteToken(askForToken=false){
+ let token=getGithubToken();
+ if(!token&&askForToken){
+  token=prompt('Nhập GitHub Personal Access Token có quyền Contents: Read and write cho blamag999/pdf-audio-sync. Token chỉ được giữ trong phiên trình duyệt hiện tại.');
+  if(token){token=token.trim();if(token)sessionStorage.setItem(GITHUB_TOKEN_SESSION_KEY,token);}
+ }
+ if(!token&&askForToken)alert('Chưa có GitHub token. Cần quyền Contents: Read and write.');
+ return token||'';
+}
+async function putJsonFileOnGitHub(filename,content,token){
+ const safeName=filename.split('/').pop();
+ if(!safeName||safeName==='.'||safeName==='..')throw Error('Tên tệp JSON không hợp lệ: '+filename);
+ const path=GITHUB_SYNC_DIR+'/'+safeName;
+ const url='https://api.github.com/repos/'+GITHUB_OWNER+'/'+GITHUB_REPO+'/contents/'+path.split('/').map(encodeURIComponent).join('/');
+ const headers={'Accept':'application/vnd.github+json','Authorization':'Bearer '+token,'X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'};
+ const old=await fetch(url+'?ref='+encodeURIComponent(GITHUB_BRANCH),{headers});
+ let sha=null;
+ if(old.ok)sha=(await old.json()).sha||null;
+ else if(old.status!==404)throw Error(filename+': không đọc được tệp hiện có trên GitHub ('+old.status+').');
+ const body={message:'Sync JSON file '+safeName,content:encodeBase64Utf8(content),branch:GITHUB_BRANCH};
+ if(sha)body.sha=sha;
+ const res=await fetch(url,{method:'PUT',headers,body:JSON.stringify(body)});
+ if(!res.ok)throw Error(filename+': GitHub từ chối lưu ('+res.status+'): '+(await res.text()).slice(0,300));
+ return path;
+}
+async function syncAllFolderJsonToGitHub({askForToken=false}={}){
+ let token=await getGithubWriteToken(askForToken);
+ if(!token)return false;
+ let files=[];
+ try{
+  if(state.dirHandle){
+   for await(const entry of state.dirHandle.values()){
+    if(entry.kind==='file'&&entry.name.toLowerCase().endsWith('.json')){
+     files.push({name:entry.name,blob:await entry.getFile()});
+    }
+   }
+  }else{
+   files=(state.folderJsonFiles||[]).slice();
+  }
+ }catch(e){
+  alert('Không thể đọc các tệp JSON trong thư mục đã chọn. Hãy chọn lại thư mục và cấp quyền đọc.\\n\\n'+e.message);
+  return false;
+ }
+ if(!files.length){
+  showToast('Không tìm thấy tệp JSON trong thư mục đã chọn. Hãy mở thư mục trước khi đồng bộ hàng loạt.');
+  return false;
+ }
+ let ok=0,failed=[];
+ updateSaveStatusBadge('☁️ Đang đồng bộ các tệp JSON...');
+ for(const item of files){
+  try{
+   const blob=item.blob;
+   const content=await blob.text();
+   // Kiểm tra JSON hợp lệ trước khi ghi, tránh đưa tệp hỏng lên cloud.
+   JSON.parse(content);
+   await putJsonFileOnGitHub(item.name,content,token);
+   ok++;
+  }catch(e){failed.push(item.name+': '+e.message);console.error('Lỗi đồng bộ JSON',item.name,e);}
+ }
+ if(failed.length){
+  updateSaveStatusBadge('⚠️ Đã đồng bộ '+ok+'/'+files.length+' tệp JSON');
+  alert('Kết quả đồng bộ JSON: '+ok+'/'+files.length+' tệp thành công.\\n\\nTệp lỗi:\\n'+failed.slice(0,10).join('\\n')+(failed.length>10?'\\n...':''));
+  return false;
+ }
+ updateSaveStatusBadge('☁️ Đã đồng bộ '+ok+' tệp JSON lên GitHub');
+ showToast('☁️ Đã đồng bộ đầy đủ '+ok+' tệp JSON lên GitHub.');
+ return true;
+}
 async function syncCurrentBookToGitHub({askForToken=false}={}){
  if(!state.currentBookKey||!state.pdfFileName){if(askForToken)alert('Vui lòng mở PDF trước khi đồng bộ mốc.');return false;}
  let token=getGithubToken();if(!token&&askForToken){token=prompt('Nhập GitHub Personal Access Token có quyền Contents: Read and write cho blamag999/pdf-audio-sync. Token chỉ được giữ trong phiên trình duyệt hiện tại.');if(token){token=token.trim();sessionStorage.setItem(GITHUB_TOKEN_SESSION_KEY,token);}}
@@ -825,7 +894,10 @@ dom.selPageTurnMode.value = state.pageTurnMode;
   dom.btnSaveGithubToken.addEventListener('click', saveGithubTokenFromInput);
   dom.btnClearGithubToken.addEventListener('click', clearGithubToken);
   updateGithubTokenStatus();
-  dom.btnSaveToGithubFolder.addEventListener('click', () => syncCurrentBookToGitHub({ askForToken: true }));
+  dom.btnSaveToGithubFolder.addEventListener('click', () => {
+    if (state.dirHandle || (state.folderJsonFiles && state.folderJsonFiles.length)) syncAllFolderJsonToGitHub({ askForToken: true });
+    else syncCurrentBookToGitHub({ askForToken: true });
+  });
   dom.btnLoadFromGithub.addEventListener('click', reloadCurrentBookFromGitHub);
   dom.importSyncInput.addEventListener('change', importSyncData);
   dom.btnClearSync.addEventListener('click', clearAllSync);
@@ -948,6 +1020,7 @@ async function handleFolderPick() {
   if ('showDirectoryPicker' in window) {
     try {
       state.dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      state.folderJsonFiles = [];
       const files = [];
       for await (const entry of state.dirHandle.values()) {
         if (entry.kind === 'file') {
@@ -968,6 +1041,7 @@ function handleFileList(files) {
   if (!files || files.length === 0) return;
 
   const rawItems = [];
+  state.folderJsonFiles = [];
   files.forEach(f => {
     const l = f.name.toLowerCase();
     let type = 'unknown';
@@ -975,6 +1049,7 @@ function handleFileList(files) {
     else if (l.endsWith('.mp3') || l.endsWith('.m4a') || l.endsWith('.wav') || l.endsWith('.ogg')) type = 'audio';
     else if (l.endsWith('.json')) type = 'json';
 
+    if (type === 'json') state.folderJsonFiles.push({ name: f.name, blob: f });
     if (type !== 'unknown') {
       rawItems.push({
         name: f.name,
