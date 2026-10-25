@@ -213,6 +213,10 @@ const dom = {
   btnExportSync: document.getElementById('btnExportSync'),
   btnSaveToGithubFolder: document.getElementById('btnSaveToGithubFolder'),
   btnLoadFromGithub: document.getElementById('btnLoadFromGithub'),
+  githubTokenInput: document.getElementById('githubTokenInput'),
+  githubTokenStatus: document.getElementById('githubTokenStatus'),
+  btnSaveGithubToken: document.getElementById('btnSaveGithubToken'),
+  btnClearGithubToken: document.getElementById('btnClearGithubToken'),
   importSyncInput: document.getElementById('importSyncInput'),
   btnClearSync: document.getElementById('btnClearSync'),
   toastMessage: document.getElementById('toastMessage')
@@ -256,6 +260,27 @@ function getSyncStem(){
 }
 function getCloudSyncPath(){return GITHUB_SYNC_DIR+'/'+getSyncStem()+'.json';}
 function getGithubToken(){return(sessionStorage.getItem(GITHUB_TOKEN_SESSION_KEY)||'').trim();}
+function updateGithubTokenStatus(){
+ const token=getGithubToken();
+ if(dom.githubTokenStatus)dom.githubTokenStatus.textContent=token?'Đã có token trong phiên hiện tại ('+token.slice(0,8)+'…'+token.slice(-4)+').':'Chưa có token trong phiên này.';
+ if(dom.githubTokenInput)dom.githubTokenInput.value='';
+}
+function saveGithubTokenFromInput(){
+ const token=(dom.githubTokenInput?.value||'').trim();
+ if(!token){showToast('Hãy nhập token mới trước khi lưu.');dom.githubTokenInput?.focus();return;}
+ if(!/^(github_pat_|gh[pousr]_[A-Za-z0-9_]+)/.test(token)){
+  if(!confirm('Token không giống định dạng token GitHub thông dụng. Bạn vẫn muốn lưu token này?'))return;
+ }
+ try{sessionStorage.setItem(GITHUB_TOKEN_SESSION_KEY,token);updateGithubTokenStatus();showToast('Đã lưu/thay GitHub token trong phiên hiện tại.');}
+ catch(e){showToast('Không thể lưu token trong phiên trình duyệt.');}
+}
+function clearGithubToken(){
+ if(!getGithubToken()){updateGithubTokenStatus();showToast('Không có token nào đang lưu trong phiên này.');return;}
+ if(!confirm('Xóa token khỏi phiên trình duyệt hiện tại? Thao tác này không thu hồi token trên GitHub.'))return;
+ sessionStorage.removeItem(GITHUB_TOKEN_SESSION_KEY);
+ if(githubSyncTimer){clearTimeout(githubSyncTimer);githubSyncTimer=null;}
+ updateGithubTokenStatus();showToast('Đã xóa token khỏi phiên trình duyệt.');
+}
 function encodeBase64Utf8(v){const b=new TextEncoder().encode(v);let x='';for(let i=0;i<b.length;i+=0x8000)x+=String.fromCharCode(...b.subarray(i,i+0x8000));return btoa(x);}
 async function syncCurrentBookToGitHub({askForToken=false}={}){
  if(!state.currentBookKey||!state.pdfFileName){if(askForToken)alert('Vui lòng mở PDF trước khi đồng bộ mốc.');return false;}
@@ -797,6 +822,9 @@ dom.selPageTurnMode.value = state.pageTurnMode;
   });
 
   dom.btnExportSync.addEventListener('click', exportSyncData);
+  dom.btnSaveGithubToken.addEventListener('click', saveGithubTokenFromInput);
+  dom.btnClearGithubToken.addEventListener('click', clearGithubToken);
+  updateGithubTokenStatus();
   dom.btnSaveToGithubFolder.addEventListener('click', () => syncCurrentBookToGitHub({ askForToken: true }));
   dom.btnLoadFromGithub.addEventListener('click', reloadCurrentBookFromGitHub);
   dom.importSyncInput.addEventListener('change', importSyncData);
