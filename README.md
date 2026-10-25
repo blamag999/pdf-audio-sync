@@ -1,10 +1,10 @@
-# PDF Audio Sync — Trình đọc PDF đồng bộ âm thanh
+# Read Aloud - Công cụ đọc sách kèm audio cho người học tiếng Anh
 
-PDF Audio Sync là ứng dụng đọc tài liệu PDF và nghe MP3 tương ứng, hỗ trợ đồng bộ thời điểm phát âm thanh với từng trang PDF. Ứng dụng chạy trên trình duyệt máy tính và thiết bị di động.
+Read Aloud là công cụ đọc sách kèm audio dành cho người học tiếng Anh. Ứng dụng hiển thị sách PDF và phát tệp MP3 tương ứng, hỗ trợ đồng bộ âm thanh theo từng trang để người học theo dõi nội dung thuận tiện. Ứng dụng chạy trên trình duyệt máy tính và thiết bị di động.
 
 ## Bắt đầu nhanh
 
-1. Mở [PDF Audio Sync trên GitHub Pages](https://blamag999.github.io/pdf-audio-sync/).
+1. Mở [Read Aloud trên GitHub Pages](https://blamag999.github.io/pdf-audio-sync/).
 2. Nhấn **Bắt đầu**.
 3. Chọn một trong hai cách:
    - **Chọn thư mục:** chọn thư mục có các tệp PDF/MP3. Ứng dụng quét và hiển thị danh sách tập để bạn chọn nghe.
