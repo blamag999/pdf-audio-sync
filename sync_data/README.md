@@ -1,13 +1,8 @@
-# Thư mục lưu trữ mốc thời gian online (Online Sync Data)
+# Dữ liệu mốc thời gian
 
-Thư mục này lưu trữ các file mốc thời gian `.json` cho các tập truyện đọc trực tuyến từ Google Drive hoặc link web.
+Thư mục này lưu các tệp JSON mốc đọc của từng cuốn sách.
 
-### Quy tắc đặt tên file:
-Đặt tên file theo tên file PDF hoặc tên truyện, viết thường, thay khoảng trắng bằng dấu gạch dưới `_`, đuôi file là `.json`.
-Ví dụ:
-- `aladdin_and_his_lamp.json`
-- `alice_in_wonderland.json`
-- `bambi.json`
-- `20_000_leagues_under_the_sea.json`
-
-Khi mở truyện online từ Google Drive, ứng dụng sẽ tự động tải file mốc tương ứng từ thư mục này về trình duyệt để khớp trang ngay lập tức!
+- Tên chuẩn mới: `<tên-PDF-không-đuôi>.json`.
+- Ứng dụng cũng đọc tên cũ có hậu tố `_sync.json` để giữ tương thích dữ liệu đã có.
+- Chỉ lưu mốc trang/thời gian; không lưu PDF hoặc MP3 tại đây.
+- Không xóa các JSON đang có mốc đọc nếu chưa sao lưu.
