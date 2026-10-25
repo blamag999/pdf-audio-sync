@@ -40,7 +40,7 @@
 
     <div class="header-right">
       <!-- NÚT MỞ DANH SÁCH TẬP TRUYỆN (PLAYLIST) -->
-      <button id="btnOpenPlaylist" class="icon-btn playlist-btn" title="Chọn thư mục trước để mở danh sách tập" disabled aria-disabled="true">
+      <button id="btnOpenPlaylist" class="icon-btn playlist-btn" title="Chọn thư mục hoặc tải danh sách sách R2 để mở danh sách tập" disabled aria-disabled="true">
         📚 <span class="hide-mobile">Danh sách tập</span>
         <span id="lblPlaylistCount" class="badge-count hidden">0</span>
       </button>
@@ -212,6 +212,10 @@
       </div>
       <div class="modal-body">
         <div class="option-block">
+          <h4>☁️ Mở sách từ Cloudflare R2</h4>
+          <p class="option-desc">Tải danh sách sách trực tuyến; PDF, MP3 và mốc đồng bộ được đọc từ R2.</p>
+          <button id="btnLoadR2Catalog" class="btn-primary-large" type="button">☁️ Sách trên Cloudflare R2</button>
+          <div class="divider-text">HOẶC MỞ TỪ MÁY TÍNH</div>
           <h4>📁 Mở cả thư mục truyện</h4>
           <p class="option-desc">Nạp danh sách các tập PDF/MP3 trong thư mục để bạn chọn tập muốn nghe. Tệp truyện vẫn nằm trên thiết bị.</p>
           <button id="btnTriggerFolderPicker" class="btn-primary-large">📂 Chọn thư mục</button>
