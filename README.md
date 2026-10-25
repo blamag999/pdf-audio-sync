@@ -20,10 +20,10 @@
    - Chế độ **Vừa dọc**: Phù hợp đọc trên màn hình điện thoại.
    - Chế độ **2 Trang song song**: Trải nghiệm như lật cuốn sách thật trên máy tính hoặc máy tính bảng.
    - Phóng to / Thu nhỏ tùy chỉnh.
-6. **Thư viện sách đa nguồn**:
+6. **Mở tệp cục bộ**:
    - **Thư mục thiết bị**: Mở thư mục cục bộ trên máy tính hoặc điện thoại.
    - **Chỉ đọc tệp cục bộ**: Mở PDF và MP3 từ thư mục trên thiết bị; không tải nội dung sách từ nguồn trực tuyến.
-7. **Lưu trữ & Xuất file mốc**:
+7. **Lưu trữ và đồng bộ mốc**:
    - Tự động lưu mốc vào IndexedDB/LocalStorage của trình duyệt cho từng cuốn riêng biệt.
    - Xuất file `.json` để sao lưu vào thư mục truyện hoặc đưa vào kho dữ liệu.
 
