@@ -212,6 +212,7 @@ const dom = {
   syncTableBody: document.getElementById('syncTableBody'),
   btnExportSync: document.getElementById('btnExportSync'),
   btnSaveToGithubFolder: document.getElementById('btnSaveToGithubFolder'),
+  btnLoadFromGithub: document.getElementById('btnLoadFromGithub'),
   importSyncInput: document.getElementById('importSyncInput'),
   btnClearSync: document.getElementById('btnClearSync'),
   toastMessage: document.getElementById('toastMessage')
@@ -269,7 +270,29 @@ async function syncCurrentBookToGitHub({askForToken=false}={}){
  }catch(e){console.error(e);updateSaveStatusBadge('⚠️ Đồng bộ GitHub lỗi');if(askForToken)alert('Không thể đồng bộ. Kiểm tra token và quyền Contents: Read and write.\\n\\n'+e.message);return false;}
 }
 function scheduleGitHubSync(){if(!getGithubToken()||!state.currentBookKey)return;if(githubSyncTimer)clearTimeout(githubSyncTimer);githubSyncTimer=setTimeout(()=>{githubSyncTimer=null;syncCurrentBookToGitHub();},900);}
-async function loadCloudSyncForBook(){
+async async function reloadCurrentBookFromGitHub() {
+  if (!state.pdfFileName || !state.currentBookKey) {
+    showToast('Trước tiên hãy mở PDF cần đồng bộ.');
+    return;
+  }
+  const button = dom.btnLoadFromGithub;
+  if (button) { button.disabled = true; button.textContent = '⏳ Đang tải...'; }
+  updateSaveStatusBadge('☁️ Đang tải mốc từ GitHub...');
+  try {
+    const loaded = await loadCloudSyncForBook();
+    if (loaded) {
+      renderSyncTable();
+      showToast('☁️ Đã tải mốc mới nhất từ GitHub.');
+    } else {
+      updateSaveStatusBadge('⚠️ Không tìm thấy JSON trên GitHub');
+      showToast('Không tìm thấy JSON trên GitHub cho tên PDF này.');
+    }
+  } finally {
+    if (button) { button.disabled = false; button.textContent = '⬇️ Tải mốc từ GitHub'; }
+  }
+}
+
+function loadCloudSyncForBook(){
   const stems=[...new Set([getSyncStem(),state.currentBookKey].filter(Boolean))];
   for(const stem of stems){
     // Ưu tiên tên chuẩn mới, sau đó thử tên cũ có hậu tố _sync.
@@ -775,6 +798,7 @@ dom.selPageTurnMode.value = state.pageTurnMode;
 
   dom.btnExportSync.addEventListener('click', exportSyncData);
   dom.btnSaveToGithubFolder.addEventListener('click', () => syncCurrentBookToGitHub({ askForToken: true }));
+  dom.btnLoadFromGithub.addEventListener('click', reloadCurrentBookFromGitHub);
   dom.importSyncInput.addEventListener('change', importSyncData);
   dom.btnClearSync.addEventListener('click', clearAllSync);
 
