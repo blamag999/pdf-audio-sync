@@ -294,7 +294,7 @@ async function getGithubWriteToken(askForToken=false){
 }
 async function getGitBlobSha(content){
  const bytes=new TextEncoder().encode(content);
- const prefix=new TextEncoder().encode('blob '+bytes.length+'\\0');
+ const prefix=new TextEncoder().encode('blob '+bytes.length+'\0');
  const all=new Uint8Array(prefix.length+bytes.length);all.set(prefix);all.set(bytes,prefix.length);
  const digest=await crypto.subtle.digest('SHA-1',all);
  return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
