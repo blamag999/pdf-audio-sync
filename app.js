@@ -543,41 +543,59 @@ function renderPlaylistView() {
 
 // MỞ TRUYỆN TỪ PLAYLIST (TỰ ĐỘNG NẠP MỐC ĐÚNG CUỐN ĐÓ)
 async function loadStoryFromPlaylist(story, audioPartIndex) {
-  const uniqueKey = story.id;
+  if (!story) return;
+
+  const uniqueKey = story.id || getBookUniqueKey(story.title);
   state.currentBookKey = uniqueKey;
   state.currentStoryAudios = story.audios || [];
   state.currentAudioIndex = (typeof audioPartIndex === 'number') ? audioPartIndex : 0;
 
-    // 1. Reset va nap moc rieng cua cuon nay
+  dom.lblLoadingText.textContent = `Đang mở: ${story.title}...`;
+  dom.pdfLoadingIndicator.classList.remove('hidden');
+
+  try {
+    // 1. Reset và nạp mốc riêng của cuốn này
     let jsonBlob = story.json ? story.json.blob : null;
     if (!jsonBlob && story.syncUrl) {
       try {
-        const syncRes = await fetch(story.syncUrl);
-        if (syncRes.ok) {
+        let syncRes = null;
+        try {
+          syncRes = await fetch(story.syncUrl);
+        } catch (e) {
+          syncRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(story.syncUrl)}`);
+        }
+        if (syncRes && syncRes.ok) {
           const syncJson = await syncRes.json();
           jsonBlob = new Blob([JSON.stringify(syncJson)], { type: 'application/json' });
         }
       } catch (e) {
-        console.log('Không thể tải file sync tự động từ R2:', e);
+        console.log('Không thể tải file sync tự động từ link:', e);
       }
     }
     await resetAndLoadSyncForBook(uniqueKey, jsonBlob);
 
-  // 2. Nap PDF
-  if (story.pdf) {
-    if (story.pdf.blob) {
-      await loadPdfFromBlob(story.pdf.blob, false);
-    } else if (story.pdf.url) {
-      await loadPdfFromUrl(story.pdf.url, false);
+    // 2. Nạp PDF
+    let pdfLoaded = false;
+    if (story.pdf) {
+      if (story.pdf.blob) {
+        pdfLoaded = await loadPdfFromBlob(story.pdf.blob, false);
+      } else if (story.pdf.url) {
+        pdfLoaded = await loadPdfFromUrl(story.pdf.url, false, story.title);
+      }
     }
+
+    // 3. Nạp audio part được chọn
+    loadAudioPart(state.currentAudioIndex);
+
+    showToast('📖 Đang đọc: ' + story.title);
+    renderPlaylistView();
+    updateAudioPartUI();
+  } catch (err) {
+    console.error('Lỗi khi mở truyện từ playlist:', err);
+    alert('Không thể mở truyện: ' + err.message);
+  } finally {
+    dom.pdfLoadingIndicator.classList.add('hidden');
   }
-
-  // 3. Nap audio part duoc chon
-  loadAudioPart(state.currentAudioIndex);
-
-  showToast('Dang mo: ' + story.title);
-  renderPlaylistView();
-  updateAudioPartUI();
 }
 
 // NAP MOT PART AUDIO CU THE
@@ -1151,36 +1169,84 @@ function convertGoogleDriveUrl(rawUrl) {
   return url;
 }
 
-async function loadPdfFromUrl(url, shouldResetSync = true) {
-  const directUrl = convertGoogleDriveUrl(url);
-  dom.lblLoadingText.textContent = 'Đang tải PDF từ Google Drive...';
+async function loadPdfFromUrl(url, shouldResetSync = true, customTitle = '') {
+  if (!url) return false;
+  const isGDrive = url.includes('drive.google.com');
+  const directUrl = isGDrive ? convertGoogleDriveUrl(url) : url;
+
+  dom.lblLoadingText.textContent = customTitle ? `Đang tải: ${customTitle}...` : 'Đang tải sách PDF...';
   dom.pdfLoadingIndicator.classList.remove('hidden');
 
   try {
-    let pdfData = null;
-    try {
-      const response = await fetch(directUrl);
-      if (response.ok) pdfData = await response.arrayBuffer();
-    } catch (e) {}
+    let pdfDoc = null;
 
-    if (!pdfData) {
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(directUrl)}`;
-      const proxyRes = await fetch(proxyUrl);
-      if (!proxyRes.ok) throw new Error('Không thể tải qua proxy');
-      pdfData = await proxyRes.arrayBuffer();
+    // Cách 1: Thử stream trực tiếp qua PDF.js
+    try {
+      const loadingTask = pdfjsLib.getDocument({
+        url: directUrl,
+        withCredentials: false
+      });
+      pdfDoc = await loadingTask.promise;
+    } catch (directErr) {
+      console.log('Stream trực tiếp không thành công, thử fetch nhị phân:', directErr.message);
     }
 
-    const typedarray = new Uint8Array(pdfData);
-    state.pdfDoc = await pdfjsLib.getDocument(typedarray).promise;
+    // Cách 2: Fetch ArrayBuffer trực tiếp
+    if (!pdfDoc) {
+      let pdfData = null;
+      try {
+        const response = await fetch(directUrl);
+        if (response.ok) pdfData = await response.arrayBuffer();
+      } catch (fetchErr) {
+        console.log('Fetch trực tiếp bị chặn (CORS), chuyển sang proxy:', fetchErr.message);
+      }
+
+      // Cách 3: Tải qua Proxy nếu bị chặn CORS
+      if (!pdfData) {
+        const proxyUrls = [
+          `https://corsproxy.io/?${encodeURIComponent(directUrl)}`,
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`
+        ];
+        for (const pUrl of proxyUrls) {
+          try {
+            const pRes = await fetch(pUrl);
+            if (pRes.ok) {
+              pdfData = await pRes.arrayBuffer();
+              if (pdfData && pdfData.byteLength > 100) break;
+            }
+          } catch (pe) {}
+        }
+      }
+
+      if (!pdfData) {
+        throw new Error('Không thể tải tệp PDF qua đường dẫn này hoặc bị chặn quyền truy cập (CORS).');
+      }
+
+      const typedarray = new Uint8Array(pdfData);
+      pdfDoc = await pdfjsLib.getDocument(typedarray).promise;
+    }
+
+    state.pdfDoc = pdfDoc;
     state.totalPages = state.pdfDoc.numPages;
     state.pageNum = 1;
 
-    const driveIdMatch = directUrl.match(/id=([a-zA-Z0-9_-]+)/);
-    state.pdfFileName = driveIdMatch ? `Drive_PDF_${driveIdMatch[1]}` : 'Online_PDF_Book';
-    const key = state.currentBookKey || getBookUniqueKey(state.pdfFileName);
+    let displayTitle = customTitle;
+    if (!displayTitle) {
+      const driveMatch = directUrl.match(/id=([a-zA-Z0-9_-]+)/);
+      if (driveMatch) {
+        displayTitle = `Drive_${driveMatch[1]}`;
+      } else {
+        const urlParts = directUrl.split('?')[0].split('/');
+        displayTitle = decodeURIComponent(urlParts[urlParts.length - 1] || 'Online_Book');
+      }
+    }
+
+    state.pdfFileName = displayTitle;
+    const key = state.currentBookKey || getBookUniqueKey(displayTitle);
     state.currentBookKey = key;
 
-    dom.pdfFileName.textContent = `☁️ PDF Drive (${state.totalPages} trang)`;
+    const sourceLabel = isGDrive ? '☁️ PDF Drive' : '⚡ PDF R2';
+    dom.pdfFileName.textContent = `${sourceLabel}: ${displayTitle} (${state.totalPages} trang)`;
     dom.pdfFileName.classList.remove('empty');
 
     if (shouldResetSync) {
@@ -1193,20 +1259,33 @@ async function loadPdfFromUrl(url, shouldResetSync = true) {
     dom.pdfLoadingIndicator.classList.add('hidden');
 
     renderCurrentSpread();
-    showToast('🎉 Đã tải PDF từ Google Drive thành công!');
+    showToast(`🎉 Đã mở: ${displayTitle}`);
     return true;
   } catch (error) {
     dom.pdfLoadingIndicator.classList.add('hidden');
-    alert('Không thể mở file PDF từ link này. Hãy đảm bảo bạn đã bật quyền: "Bất kỳ ai có đường liên kết đều có thể xem" trên Google Drive!\n' + error.message);
+    console.error('Lỗi load PDF:', error);
+    alert(`Không thể mở file PDF:\n${error.message}\n\nMẹo:\n1. Nếu dùng Cloudflare R2, hãy cấu hình CORS Policy trên Dashboard.\n2. Nếu dùng Google Drive, hãy chọn "Bất kỳ ai có liên kết".`);
     return false;
   }
 }
 
 function loadAudioFromUrl(url) {
-  const directUrl = convertGoogleDriveUrl(url);
+  if (!url) return;
+  const isGDrive = url.includes('drive.google.com');
+  const directUrl = isGDrive ? convertGoogleDriveUrl(url) : url;
+
+  let audioName = 'Online Audio';
   const driveIdMatch = directUrl.match(/id=([a-zA-Z0-9_-]+)/);
-  state.audioFileName = driveIdMatch ? `Drive_Audio_${driveIdMatch[1]}` : 'Online_Audio';
-  dom.audioFileName.textContent = `☁️ MP3 Drive Online`;
+  if (driveIdMatch) {
+    audioName = `Drive_${driveIdMatch[1]}`;
+  } else {
+    const parts = directUrl.split('?')[0].split('/');
+    audioName = decodeURIComponent(parts[parts.length - 1] || 'Online_Audio');
+  }
+
+  state.audioFileName = audioName;
+  const sourceLabel = isGDrive ? '☁️ MP3 Drive' : '⚡ MP3 R2';
+  dom.audioFileName.textContent = `${sourceLabel}: ${audioName}`;
   dom.audioFileName.classList.remove('empty');
 
   dom.audioElement.pause();
@@ -1216,7 +1295,7 @@ function loadAudioFromUrl(url) {
 
   dom.audioElement.src = directUrl;
   dom.audioElement.load();
-  showToast('🎵 Đã kết nối âm thanh Google Drive!');
+  showToast('🎵 Đã nạp file âm thanh!');
 }
 
 function saveRecentOnlineLink(url, label) {
